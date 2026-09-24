@@ -1,60 +1,68 @@
 # vimesimal
 
-Modular Vim 9 config: one global theme and global plugins, plus separate config and plugins for each language.
+Modular Neovim (0.12+) config: one global theme and global plugins, plus separate config and plugins for each language.
 
 ```
-vimrc                     entry point
-core/options.vim          global options (line numbers, search, undo, …)
-core/keymaps.vim          global keymaps (leader = Space)
-core/plugins.vim          global plugin list (vim-plug) + pulls in lang/*/plugins.vim
-plugin-config/*.vim       settings for global plugins
-colors/vimesimal.vim      theme (transparent bg, matches kitty)
-autoload/vimesimal.vim    shared palette
-lang/<name>/plugins.vim   language-only plugins
-lang/<name>/config.vim    language LSP server, formatter, maps
-after/ftplugin/<name>.vim language spacing / indent style
+init.lua                    entry point
+lua/config/options.lua      global options (line numbers, search, undo, …)
+lua/config/keymaps.lua      global keymaps (leader = Space)
+lua/config/autocmds.lua     tree-sitter highlighting, yank flash
+lua/config/lsp.lua          diagnostics look + LSP keymaps
+lua/config/lazy.lua         lazy.nvim: imports lua/plugins + lua/lang
+lua/plugins/*.lua           global plugins
+colors/vimesimal.lua        theme (transparent bg, matches kitty)
+lua/vimesimal/              shared palette + lualine theme
+lua/lang/<name>.lua         language plugins: LSP server, formatter, extras
+after/ftplugin/<name>.lua   language spacing / indent style
 ```
 
 ## Install
 
 ```sh
-./install.sh             # links ~/.vim and ~/.vimrc here, installs plugins
-sudo pacman -S clang     # clangd + clang-format for C
+sudo pacman -S neovim clang   # clang provides clangd + clang-format
+./install.sh                  # links ~/.config/nvim here, installs plugins
 ```
 
 ## Features
 
 | | |
 |---|---|
-| Syntax highlight | `colors/vimesimal.vim`, vim-c-cpp-modern |
-| Auto suggest | vim-lsp + asyncomplete (LSP, buffer words, paths) |
-| Nest | tab guides via `listchars`, indentLine for spaces, rainbow brackets |
-| Line | relative numbers, cursorline, lightline, gitgutter |
-| Navigate | fzf, fern tree, LSP go-to |
+| Syntax highlight | built-in tree-sitter + `colors/vimesimal.lua`, LSP semantic tokens |
+| Auto suggest | blink.cmp (LSP, paths, snippets, buffer words), signature help |
+| Nest | indent-blankline (current scope highlighted), rainbow-delimiters |
+| Line | relative numbers, cursorline, lualine, gitsigns |
+| Navigate | fzf-lua, nvim-tree, LSP go-to, which-key hints |
 
 ## Keys
 
 | Key | Action |
 |---|---|
-| `<Space>f` / `g` / `b` / `/` / `r` | files / ripgrep / buffers / lines / recent |
-| `<Space>e` | file tree (`l` open, `h` collapse) |
-| `gd` `gD` `gr` `gi` `gy` `K` | definition / declaration / references / impl / type / hover |
-| `[d` `]d` `<Space>d` | prev / next / list diagnostics |
-| `<Space>rn` `<Space>ca` | rename / code action |
-| `<Space>o` `<Space>S` | document / workspace symbols |
-| `Tab` `S-Tab` `CR` `C-Space` | completion next / prev / accept / force |
+| `<Space>f` / `g` / `b` / `/` / `r` | files / grep / buffers / lines / recent |
+| `<Space>o` / `S` / `d` | document symbols / workspace symbols / diagnostics |
+| `<Space>e` | file tree (`l` open, `h` close) |
+| `gd` `gD` `gy` `grr` `gri` `K` | definition / declaration / type / references / impl / hover |
+| `[d` `]d` `<Space>k` | prev / next / show diagnostic |
+| `<Space>rn` `<Space>ca` `<Space>cf` | rename / code action / format |
+| `Tab` `S-Tab` `CR` `C-Space` | completion next / prev / accept / show |
+| `]h` `[h` `<Space>hp` | next / prev / preview git hunk |
+| `gc` `gcc` | comment |
 | `C-h/j/k/l` `S-h/l` | windows / buffers |
-| `<Space>cf` `<Space>a` | (C) clang-format / toggle .c ↔ .h |
+| `<Space>a` | (C) toggle .c ↔ .h |
 
 ## C: kernel style
 
-Hard tabs, 8 wide, 80 columns, kernel `cinoptions`. `clang-format` and clangd fall back to a Linux-style profile when a project has no `.clang-format` of its own.
+Hard tabs, 8 wide, 80 columns, kernel `cinoptions`, `.h` treated as C. `<Space>cf` runs clang-format with a Linux kernel profile, unless the project has its own `.clang-format`.
 
 ## Adding a language
 
-1. `lang/<name>/plugins.vim`: `Plug '…', {'for': '<name>'}`
-2. `lang/<name>/config.vim`: `lsp#register_server(...)` in an `User lsp_setup` autocmd, plus any maps
-3. `after/ftplugin/<name>.vim`: `setlocal` spacing
-4. `:PlugInstall`
+1. `lua/lang/<name>.lua`: return lazy specs, e.g.
+   ```lua
+   return {
+     { "neovim/nvim-lspconfig", opts = { servers = { pyright = {} } } },
+     { "stevearc/conform.nvim", opts = { formatters_by_ft = { python = { "ruff_format" } } } },
+   }
+   ```
+2. `after/ftplugin/<name>.lua`: `vim.bo.shiftwidth = …`
+3. Tree-sitter parser: `sudo pacman -S tree-sitter-<name>` (C and Lua come with Neovim)
 
-You don't need to edit anything under `core/`.
+You don't need to edit anything under `lua/config/` or `lua/plugins/`.

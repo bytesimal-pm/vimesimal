@@ -1,36 +1,30 @@
 #!/usr/bin/env bash
-# Link this repo as ~/.vim and ~/.vimrc, then install plugins.
+# Link this repo as ~/.config/nvim, then install plugins.
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-stamp="$(date +%Y%m%d-%H%M%S)"
+dst="${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
 
-link() {
-	local src="$1" dst="$2"
-	if [ -L "$dst" ] && [ "$(readlink -f "$dst")" = "$(readlink -f "$src")" ]; then
-		echo "ok   $dst"
-		return
-	fi
+if [ -L "$dst" ] && [ "$(readlink -f "$dst")" = "$repo" ]; then
+	echo "ok   $dst"
+else
 	if [ -e "$dst" ] || [ -L "$dst" ]; then
-		mv "$dst" "$dst.bak.$stamp"
-		echo "bak  $dst -> $dst.bak.$stamp"
+		bak="$dst.bak.$(date +%Y%m%d-%H%M%S)"
+		mv "$dst" "$bak"
+		echo "bak  $dst -> $bak"
 	fi
-	ln -s "$src" "$dst"
-	echo "link $dst -> $src"
-}
-
-link "$repo" "$HOME/.vim"
-link "$repo/vimrc" "$HOME/.vimrc"
-
-plug="$repo/autoload/plug.vim"
-if [ ! -f "$plug" ]; then
-	curl -fsLo "$plug" --create-dirs \
-		https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+	ln -s "$repo" "$dst"
+	echo "link $dst -> $repo"
 fi
 
-vim -es -u "$repo/vimrc" -i NONE -c 'PlugInstall --sync' -c 'qa' || true
+if ! command -v nvim >/dev/null; then
+	echo "missing: nvim  (sudo pacman -S neovim), then re-run this script"
+	exit 1
+fi
+
+nvim --headless "+Lazy! sync" +qa
 echo "plugins installed"
 
-for tool in clangd clang-format rg fzf; do
+for tool in clangd clang-format rg fzf git curl; do
 	command -v "$tool" >/dev/null || echo "missing: $tool"
 done
