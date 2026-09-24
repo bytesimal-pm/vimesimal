@@ -147,6 +147,23 @@ local groups = {
   ["@comment"] = { link = "Comment" },
   ["@comment.todo"] = { link = "Todo" },
 
+  -- NASM (regex syntax: syntax/nasm.vim leaves registers unlinked)
+  nasmGen08Register = { fg = p.register },
+  nasmGen16Register = { fg = p.register },
+  nasmGen32Register = { fg = p.register },
+  nasmGen64Register = { fg = p.register },
+  nasmExtRegister = { fg = p.register },
+  nasmSegRegister = { fg = p.register },
+  nasmSpcRegister = { fg = p.register },
+  nasmFpuRegister = { fg = p.register },
+  nasmMmxRegister = { fg = p.register },
+  nasmAvxRegister = { fg = p.register },
+  nasmCtrlRegister = { fg = p.register },
+  nasmDebugRegister = { fg = p.register },
+  nasmTestRegister = { fg = p.register },
+  nasmLabel = { fg = p.func },
+  nasmLocalLabel = { fg = p.func },
+
   -- LSP
   ["@lsp.type.macro"] = { fg = p.preproc },
   ["@lsp.type.enumMember"] = { fg = p.number },

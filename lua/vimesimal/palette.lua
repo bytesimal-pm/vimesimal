@@ -38,6 +38,7 @@ c.format = c.yellow -- %d, %s inside strings
 c.operator = c.red -- = < ++ -> (moonfly-style: operators colored, variables white)
 c.param = "#ff6ec7" -- function parameters
 c.member = "#b98cff" -- struct fields
+c.register = c.member -- assembly registers (rax, edi, xmm0)
 c.comment = c.mute
 
 return c

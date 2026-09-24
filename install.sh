@@ -23,6 +23,7 @@ link() {
 
 link "$repo" "$config/nvim"
 link "$repo/tmux/tmux.conf" "$config/tmux/tmux.conf"
+link "$repo/asm-lsp/.asm-lsp.toml" "$config/asm-lsp/.asm-lsp.toml"
 
 if ! command -v nvim >/dev/null; then
 	echo "missing: nvim  (sudo pacman -S neovim), then re-run this script"
@@ -32,6 +33,6 @@ fi
 nvim --headless "+Lazy! sync" +qa
 echo "plugins installed"
 
-for tool in clangd clang-format rg fzf git curl tmux; do
+for tool in clangd clang-format rg fzf git curl tmux nasm asm-lsp; do
 	command -v "$tool" >/dev/null || echo "missing: $tool"
 done

@@ -13,6 +13,7 @@ lua/plugins/*.lua           global plugins
 colors/vimesimal.lua        theme (transparent bg, matches kitty)
 lua/vimesimal/              shared palette + lualine theme
 tmux/tmux.conf              tmux: Ctrl-hjkl pane nav, true color, undercurl
+asm-lsp/.asm-lsp.toml       asm-lsp: NASM x86-64 defaults
 lua/lang/<name>.lua         language plugins: LSP server, formatter, extras
 after/ftplugin/<name>.lua   language spacing / indent style
 ```
@@ -21,7 +22,8 @@ after/ftplugin/<name>.lua   language spacing / indent style
 
 ```sh
 sudo pacman -S neovim clang   # clang provides clangd + clang-format
-./install.sh                  # links ~/.config/nvim + ~/.config/tmux/tmux.conf, installs plugins
+sudo pacman -S nasm rust && cargo install asm-lsp   # NASM + assembly completion
+./install.sh                  # links ~/.config/nvim, tmux.conf and asm-lsp config, installs plugins
 ```
 
 ## Features
@@ -54,6 +56,10 @@ sudo pacman -S neovim clang   # clang provides clangd + clang-format
 ## C: kernel style
 
 Hard tabs, 8 wide, no line wrapping, kernel `cinoptions`, `.h` treated as C. `<Space>cf` runs clang-format with a Linux kernel profile, unless the project has its own `.clang-format`.
+
+## NASM: 8 spaces
+
+`.asm`, `.nasm` and `.inc` open as NASM (x86/x86-64). Indent is 8 spaces (no tabs), with no line wrapping. `gcc` comments with `;`. Registers are violet and labels cyan; instructions use the keyword color. Once `asm-lsp` is installed (`~/.cargo/bin` on PATH), it adds instruction/register completion, hover docs (`K`) and nasm diagnostics automatically.
 
 ## Adding a language
 
