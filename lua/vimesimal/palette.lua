@@ -20,7 +20,7 @@ local c = {
   red = "#ff2e4c",
   green = "#39ff14",
   yellow = "#ffff00",
-  blue = "#0014bf", -- deep neon blue
+  blue = "#001bff", -- neon blue: #0014bf hue at full brightness
   magenta = "#ff00ff",
   cyan = "#00ffff",
 }
