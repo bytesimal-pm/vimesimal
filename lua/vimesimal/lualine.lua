@@ -11,9 +11,9 @@ local function mode(accent)
 end
 
 return {
-  normal = mode(p.blue),
+  normal = mode(p.cyan),
   insert = mode(p.green),
-  visual = mode(p.purple),
+  visual = mode(p.magenta),
   replace = mode(p.red),
   command = mode(p.yellow),
   terminal = mode(p.cyan),
