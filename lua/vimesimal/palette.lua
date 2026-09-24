@@ -37,8 +37,4 @@ c.escape = c.cyan -- \n, \t inside strings
 c.format = c.yellow -- %d, %s inside strings
 c.comment = c.mute
 
--- Bracket depth colors: deliberately outside the syntax colors above so
--- a bracket never looks like a keyword, string or function.
-c.brackets = { "#ffffff", "#ffaf00", "#87afff", "#af87ff" }
-
 return c

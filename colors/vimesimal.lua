@@ -143,6 +143,7 @@ local groups = {
   ["@keyword.type"] = { fg = p.type },
   ["@operator"] = { link = "Operator" },
   ["@punctuation"] = { fg = p.gray },
+  ["@punctuation.bracket"] = { fg = p.white },
   ["@comment"] = { link = "Comment" },
   ["@comment.todo"] = { link = "Todo" },
 
@@ -186,11 +187,6 @@ local groups = {
   NvimTreeIndentMarker = { fg = p.guide },
   FzfLuaBorder = { link = "FloatBorder" },
 }
-
--- Bracket depth (used by rainbow-delimiters, see lua/plugins/nest.lua)
-for i, color in ipairs(p.brackets) do
-  groups["VimesimalBracket" .. i] = { fg = color }
-end
 
 for name, spec in pairs(groups) do
   vim.api.nvim_set_hl(0, name, spec)

@@ -29,7 +29,7 @@ sudo pacman -S neovim clang   # clang provides clangd + clang-format
 |---|---|
 | Syntax highlight | built-in tree-sitter + `colors/vimesimal.lua`, LSP semantic tokens |
 | Auto suggest | blink.cmp (LSP, paths, snippets, buffer words), signature help |
-| Nest | indent-blankline (current scope highlighted), rainbow-delimiters |
+| Nest | indent-blankline (current scope highlighted) |
 | Line | line numbers, cursorline, lualine, gitsigns |
 | Navigate | fzf-lua, nvim-tree, LSP go-to, which-key hints |
 
