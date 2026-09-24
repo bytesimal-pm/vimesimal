@@ -1,4 +1,4 @@
--- lualine theme: white mode block, gray segments, a muted accent per mode.
+-- lualine theme: colored mode block, gray segments.
 
 local p = require("vimesimal.palette")
 
@@ -11,12 +11,12 @@ local function mode(accent)
 end
 
 return {
-  normal = mode(p.white),
-  insert = mode(p.sage),
-  visual = mode(p.steel),
-  replace = mode(p.rose),
-  command = mode(p.sand),
-  terminal = mode(p.teal),
+  normal = mode(p.blue),
+  insert = mode(p.green),
+  visual = mode(p.purple),
+  replace = mode(p.red),
+  command = mode(p.yellow),
+  terminal = mode(p.cyan),
   inactive = {
     a = { fg = p.faint, bg = p.panel },
     b = { fg = p.faint, bg = p.panel },
