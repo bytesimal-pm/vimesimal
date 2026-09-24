@@ -32,7 +32,9 @@ c.type = c.green
 c.string = c.magenta
 c.number = c.magenta
 c.preproc = c.blue
-c.special = c.red -- escapes (\n) and format specifiers (%d)
+c.special = c.red
+c.escape = c.cyan -- \n, \t inside strings
+c.format = c.yellow -- %d, %s inside strings
 c.comment = c.mute
 
 -- Bracket depth colors: deliberately outside the syntax colors above so
