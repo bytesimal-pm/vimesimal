@@ -35,6 +35,9 @@ c.preproc = c.blue
 c.special = c.red
 c.escape = c.cyan -- \n, \t inside strings
 c.format = c.yellow -- %d, %s inside strings
+c.operator = c.red -- = < ++ -> (moonfly-style: operators colored, variables white)
+c.param = "#ff87d7" -- function parameters
+c.member = "#afafff" -- struct fields
 c.comment = c.mute
 
 return c
