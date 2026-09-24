@@ -17,11 +17,10 @@ local c = {
   panel = "#1a1a1a",
 
   -- Neon: Linux console hues at full saturation
-  red = "#ff5f5f", -- red and blue are lifted toward white: at pure
-                   -- saturation they read ~3x dimmer than yellow/cyan
+  red = "#ff2e4c",
   green = "#39ff14",
   yellow = "#ffff00",
-  blue = "#5cb0ff",
+  blue = "#3d8bff",
   magenta = "#ff00ff",
   cyan = "#00ffff",
 }
