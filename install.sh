@@ -1,21 +1,28 @@
 #!/usr/bin/env bash
-# Link this repo as ~/.config/nvim, then install plugins.
+# Link this repo as ~/.config/nvim (and its tmux config), then install plugins.
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-dst="${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
+config="${XDG_CONFIG_HOME:-$HOME/.config}"
+stamp="$(date +%Y%m%d-%H%M%S)"
 
-if [ -L "$dst" ] && [ "$(readlink -f "$dst")" = "$repo" ]; then
-	echo "ok   $dst"
-else
-	if [ -e "$dst" ] || [ -L "$dst" ]; then
-		bak="$dst.bak.$(date +%Y%m%d-%H%M%S)"
-		mv "$dst" "$bak"
-		echo "bak  $dst -> $bak"
+link() {
+	local src="$1" dst="$2"
+	if [ -L "$dst" ] && [ "$(readlink -f "$dst")" = "$(readlink -f "$src")" ]; then
+		echo "ok   $dst"
+		return
 	fi
-	ln -s "$repo" "$dst"
-	echo "link $dst -> $repo"
-fi
+	if [ -e "$dst" ] || [ -L "$dst" ]; then
+		mv "$dst" "$dst.bak.$stamp"
+		echo "bak  $dst -> $dst.bak.$stamp"
+	fi
+	mkdir -p "$(dirname "$dst")"
+	ln -s "$src" "$dst"
+	echo "link $dst -> $src"
+}
+
+link "$repo" "$config/nvim"
+link "$repo/tmux/tmux.conf" "$config/tmux/tmux.conf"
 
 if ! command -v nvim >/dev/null; then
 	echo "missing: nvim  (sudo pacman -S neovim), then re-run this script"
@@ -25,6 +32,6 @@ fi
 nvim --headless "+Lazy! sync" +qa
 echo "plugins installed"
 
-for tool in clangd clang-format rg fzf git curl; do
+for tool in clangd clang-format rg fzf git curl tmux; do
 	command -v "$tool" >/dev/null || echo "missing: $tool"
 done

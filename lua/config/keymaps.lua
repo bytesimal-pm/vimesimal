@@ -6,11 +6,7 @@ map("n", "<leader>w", "<cmd>write<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>bdelete<cr>", { desc = "Close buffer" })
 map("n", "<Esc>", "<cmd>nohlsearch<cr>")
 
--- Windows
-map("n", "<C-h>", "<C-w>h")
-map("n", "<C-j>", "<C-w>j")
-map("n", "<C-k>", "<C-w>k")
-map("n", "<C-l>", "<C-w>l")
+-- Windows: <C-h/j/k/l> is in lua/plugins/tmux.lua (works across tmux panes)
 
 -- Buffers
 map("n", "<S-l>", "<cmd>bnext<cr>", { desc = "Next buffer" })

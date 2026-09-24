@@ -12,6 +12,7 @@ lua/config/lazy.lua         lazy.nvim: imports lua/plugins + lua/lang
 lua/plugins/*.lua           global plugins
 colors/vimesimal.lua        theme (transparent bg, matches kitty)
 lua/vimesimal/              shared palette + lualine theme
+tmux/tmux.conf              tmux: Ctrl-hjkl pane nav, true color, undercurl
 lua/lang/<name>.lua         language plugins: LSP server, formatter, extras
 after/ftplugin/<name>.lua   language spacing / indent style
 ```
@@ -20,7 +21,7 @@ after/ftplugin/<name>.lua   language spacing / indent style
 
 ```sh
 sudo pacman -S neovim clang   # clang provides clangd + clang-format
-./install.sh                  # links ~/.config/nvim here, installs plugins
+./install.sh                  # links ~/.config/nvim + ~/.config/tmux/tmux.conf, installs plugins
 ```
 
 ## Features
@@ -31,7 +32,7 @@ sudo pacman -S neovim clang   # clang provides clangd + clang-format
 | Auto suggest | blink.cmp (LSP, paths, snippets, buffer words), signature help |
 | Nest | indent-blankline (current scope highlighted) |
 | Line | line numbers, cursorline, lualine, gitsigns |
-| Navigate | fzf-lua, nvim-tree, LSP go-to, which-key hints |
+| Navigate | fzf-lua, nvim-tree, LSP go-to, which-key hints, vim-tmux-navigator |
 
 ## Keys
 
@@ -46,7 +47,8 @@ sudo pacman -S neovim clang   # clang provides clangd + clang-format
 | `Tab` `S-Tab` `CR` `C-Space` | completion next / prev / accept / show |
 | `]h` `[h` `<Space>hp` | next / prev / preview git hunk |
 | `gc` `gcc` | comment |
-| `C-h/j/k/l` `S-h/l` | windows / buffers |
+| `C-h/j/k/l` | move between splits and tmux panes |
+| `S-h/l` | previous / next buffer |
 | `<Space>a` | (C) toggle .c ↔ .h |
 
 ## C: kernel style
@@ -66,3 +68,7 @@ Hard tabs, 8 wide, no line wrapping, kernel `cinoptions`, `.h` treated as C. `<S
 3. Tree-sitter parser: `sudo pacman -S tree-sitter-<name>` (C and Lua come with Neovim)
 
 You don't need to edit anything under `lua/config/` or `lua/plugins/`.
+
+## tmux
+
+`tmux/tmux.conf` is linked to `~/.config/tmux/tmux.conf`. `Ctrl-h/j/k/l` moves between Neovim splits and tmux panes as one grid. Because `Ctrl-l` is taken, clear the shell with `<prefix> Ctrl-l`. Split with `<prefix> |` and `<prefix> -`. The config also turns on true color, wavy underlines and a short Esc delay so Neovim looks and feels the same inside tmux.
