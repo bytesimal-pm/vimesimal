@@ -17,7 +17,7 @@ local c = {
   panel = "#1a1a1a",
 
   -- Neon: Linux console hues at full saturation
-  red = "#ff2e4c",
+  red = "#ff3021", -- neon red: Pantone 485 C (#da291c) hue at full brightness
   green = "#39ff14",
   yellow = "#ffff00",
   blue = "#001bff", -- neon blue: #0014bf hue at full brightness
