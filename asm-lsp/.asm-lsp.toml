@@ -1,11 +1,15 @@
 # Global asm-lsp config, linked to ~/.config/asm-lsp/.asm-lsp.toml by
 # install.sh. A project's own .asm-lsp.toml overrides this.
+# Schema: asm-lsp 0.10 (opts must be nested under default_config).
 
 [default_config]
 assembler = "nasm"
 instruction_set = "x86/x86-64"
 
-[opts]
+[default_config.opts]
 compiler = "nasm"
+# asm-lsp runs: nasm <flags> <file>. Assemble as 64-bit ELF and throw the
+# object away so no .o file appears next to the source.
+compile_flags_txt = ["-f", "elf64", "-o", "/dev/null"]
 diagnostics = true
 default_diagnostics = true

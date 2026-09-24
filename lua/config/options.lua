@@ -5,6 +5,12 @@ local opt = vim.opt
 vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
+-- Tools installed with `cargo install` (asm-lsp) even if the shell PATH lacks them
+local cargo_bin = vim.fs.normalize("~/.cargo/bin")
+if vim.uv.fs_stat(cargo_bin) and not vim.env.PATH:find(cargo_bin, 1, true) then
+  vim.env.PATH = cargo_bin .. ":" .. vim.env.PATH
+end
+
 -- Terminal
 opt.termguicolors = true
 opt.mouse = "a"
