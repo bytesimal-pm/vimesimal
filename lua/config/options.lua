@@ -15,7 +15,7 @@ opt.winborder = "single"
 
 -- Line
 opt.number = true
-opt.relativenumber = true
+opt.relativenumber = false
 opt.cursorline = true
 opt.signcolumn = "yes"
 opt.laststatus = 3

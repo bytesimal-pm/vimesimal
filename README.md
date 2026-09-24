@@ -30,7 +30,7 @@ sudo pacman -S neovim clang   # clang provides clangd + clang-format
 | Syntax highlight | built-in tree-sitter + `colors/vimesimal.lua`, LSP semantic tokens |
 | Auto suggest | blink.cmp (LSP, paths, snippets, buffer words), signature help |
 | Nest | indent-blankline (current scope highlighted), rainbow-delimiters |
-| Line | relative numbers, cursorline, lualine, gitsigns |
+| Line | line numbers, cursorline, lualine, gitsigns |
 | Navigate | fzf-lua, nvim-tree, LSP go-to, which-key hints |
 
 ## Keys
@@ -51,7 +51,7 @@ sudo pacman -S neovim clang   # clang provides clangd + clang-format
 
 ## C: kernel style
 
-Hard tabs, 8 wide, 80 columns, kernel `cinoptions`, `.h` treated as C. `<Space>cf` runs clang-format with a Linux kernel profile, unless the project has its own `.clang-format`.
+Hard tabs, 8 wide, no line wrapping, kernel `cinoptions`, `.h` treated as C. `<Space>cf` runs clang-format with a Linux kernel profile, unless the project has its own `.clang-format`.
 
 ## Adding a language
 

@@ -11,7 +11,7 @@ local kernel_style = "{" .. table.concat({
   "TabWidth: 8",
   "UseTab: Always",
   "ContinuationIndentWidth: 8",
-  "ColumnLimit: 80",
+  "ColumnLimit: 0", -- never break long lines
   "BreakBeforeBraces: Linux",
   "IndentCaseLabels: false",
   "AllowShortIfStatementsOnASingleLine: false",
