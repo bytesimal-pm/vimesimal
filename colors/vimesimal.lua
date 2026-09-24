@@ -122,6 +122,7 @@ local groups = {
   ["@label"] = { link = "Label" },
   ["@string"] = { link = "String" },
   ["@string.escape"] = { fg = p.special },
+  ["@string.special"] = { fg = p.special },
   ["@character"] = { link = "Character" },
   ["@number"] = { link = "Number" },
   ["@boolean"] = { link = "Boolean" },
@@ -173,13 +174,6 @@ local groups = {
   BlinkCmpDocBorder = { link = "FloatBorder" },
   IblIndent = { fg = p.guide },
   IblScope = { fg = p.faint },
-  RainbowDelimiterRed = { fg = p.yellow },
-  RainbowDelimiterYellow = { fg = p.magenta },
-  RainbowDelimiterBlue = { fg = p.cyan },
-  RainbowDelimiterOrange = { fg = p.green },
-  RainbowDelimiterGreen = { fg = p.red },
-  RainbowDelimiterViolet = { fg = p.blue },
-  RainbowDelimiterCyan = { fg = p.white },
   GitSignsAdd = { fg = p.green },
   GitSignsChange = { fg = p.cyan },
   GitSignsDelete = { fg = p.red },
@@ -192,6 +186,11 @@ local groups = {
   NvimTreeIndentMarker = { fg = p.guide },
   FzfLuaBorder = { link = "FloatBorder" },
 }
+
+-- Bracket depth (used by rainbow-delimiters, see lua/plugins/nest.lua)
+for i, color in ipairs(p.brackets) do
+  groups["VimesimalBracket" .. i] = { fg = color }
+end
 
 for name, spec in pairs(groups) do
   vim.api.nvim_set_hl(0, name, spec)

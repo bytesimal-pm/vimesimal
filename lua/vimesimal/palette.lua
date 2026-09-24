@@ -32,7 +32,11 @@ c.type = c.green
 c.string = c.magenta
 c.number = c.magenta
 c.preproc = c.blue
-c.special = c.red
+c.special = c.red -- escapes (\n) and format specifiers (%d)
 c.comment = c.mute
+
+-- Bracket depth colors: deliberately outside the syntax colors above so
+-- a bracket never looks like a keyword, string or function.
+c.brackets = { "#ffffff", "#ffaf00", "#87afff", "#af87ff" }
 
 return c

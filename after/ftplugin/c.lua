@@ -10,5 +10,8 @@ vim.bo.cinoptions = ":0,l1,t0,g0,(0"
 vim.bo.textwidth = 0
 vim.bo.formatoptions = vim.bo.formatoptions:gsub("[tc]", "")
 
+-- Color %d / %s / … inside strings
+require("vimesimal.cformat").attach(0)
+
 local undo = "setlocal et< ts< sw< sts< tw< fo< cin< cino<"
 vim.b.undo_ftplugin = vim.b.undo_ftplugin and (vim.b.undo_ftplugin .. " | " .. undo) or undo
