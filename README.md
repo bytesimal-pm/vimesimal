@@ -50,7 +50,8 @@ npm install -g --prefix ~/.local vscode-langservers-extracted   # ESLint server 
 | `gd` `gD` `gy` `grr` `gri` `K` | definition / declaration / type / references / impl / hover |
 | `[d` `]d` `<Space>d` | prev / next / show diagnostic under cursor |
 | `<Space>rn` `<Space>ca` `<Space>cf` | rename / code action / format |
-| `Tab` `S-Tab` `CR` `C-Space` | completion next / prev / accept / show |
+| `Tab` | step into the suggestion menu (then `j`/`k` move, `y` accept, `n` cancel) |
+| `S-Tab` `CR` `C-Space` | completion prev / accept / show |
 | `]h` `[h` `<Space>hp` | next / prev / preview git hunk |
 | `gc` `gcc` | comment |
 | `C-h/j/k/l` | move between splits and tmux panes |
