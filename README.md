@@ -45,10 +45,10 @@ npm install -g --prefix ~/.local vscode-langservers-extracted   # ESLint server 
 | Key | Action |
 |---|---|
 | `<Space>f` / `g` / `b` / `/` / `r` | files / grep / buffers / lines / recent |
-| `<Space>o` / `S` / `d` | document symbols / workspace symbols / diagnostics |
+| `<Space>o` / `S` / `D` | document symbols / workspace symbols / diagnostics list |
 | `<Space>e` | file tree (`l` open, `h` close) |
 | `gd` `gD` `gy` `grr` `gri` `K` | definition / declaration / type / references / impl / hover |
-| `[d` `]d` `<Space>k` | prev / next / show diagnostic |
+| `[d` `]d` `<Space>d` | prev / next / show diagnostic under cursor |
 | `<Space>rn` `<Space>ca` `<Space>cf` | rename / code action / format |
 | `Tab` `S-Tab` `CR` `C-Space` | completion next / prev / accept / show |
 | `]h` `[h` `<Space>hp` | next / prev / preview git hunk |

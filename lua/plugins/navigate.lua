@@ -17,7 +17,7 @@ return {
       { "<leader>r", fzf("oldfiles"), desc = "Recent files" },
       { "<leader>o", fzf("lsp_document_symbols"), desc = "Document symbols" },
       { "<leader>S", fzf("lsp_live_workspace_symbols"), desc = "Workspace symbols" },
-      { "<leader>d", fzf("diagnostics_document"), desc = "Diagnostics" },
+      { "<leader>D", fzf("diagnostics_document"), desc = "Diagnostics list" },
     },
     opts = {
       fzf_colors = true,

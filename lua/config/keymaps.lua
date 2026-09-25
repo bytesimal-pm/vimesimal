@@ -6,6 +6,10 @@ map("n", "<leader>w", "<cmd>write<cr>", { desc = "Save" })
 map("n", "<leader>q", "<cmd>bdelete<cr>", { desc = "Close buffer" })
 map("n", "<Esc>", "<cmd>nohlsearch<cr>")
 
+-- Diagnostics (errors/warnings) under the cursor, in any buffer.
+-- <leader>D lists all of them (lua/plugins/navigate.lua).
+map("n", "<leader>d", vim.diagnostic.open_float, { desc = "Line diagnostics" })
+
 -- Windows: <C-h/j/k/l> is in lua/plugins/tmux.lua (works across tmux panes)
 
 -- Buffers

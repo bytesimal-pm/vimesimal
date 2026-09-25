@@ -30,6 +30,5 @@ vim.api.nvim_create_autocmd("LspAttach", {
     map("gy", vim.lsp.buf.type_definition, "Type definition")
     map("<leader>rn", vim.lsp.buf.rename, "Rename")
     map("<leader>ca", vim.lsp.buf.code_action, "Code action")
-    map("<leader>k", vim.diagnostic.open_float, "Line diagnostics")
   end,
 })
