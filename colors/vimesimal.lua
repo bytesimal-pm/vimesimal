@@ -15,9 +15,11 @@ local groups = {
   -- Editor UI
   Normal = { fg = p.white, bg = none },
   NormalNC = { link = "Normal" },
-  NormalFloat = { fg = p.dim, bg = p.panel },
-  FloatBorder = { fg = p.faint, bg = p.panel },
-  FloatTitle = { fg = p.cyan, bg = p.panel, bold = true },
+  -- Floats are transparent like the editor; the border marks their edge
+  NormalFloat = { fg = p.white, bg = none },
+  FloatBorder = { fg = p.faint, bg = none },
+  FloatTitle = { fg = p.cyan, bg = none, bold = true },
+  FloatFooter = { fg = p.cyan, bg = none },
   NonText = { fg = p.guide },
   Whitespace = { fg = p.guide },
   SpecialKey = { fg = p.guide },
@@ -44,12 +46,12 @@ local groups = {
   CurSearch = { link = "IncSearch" },
   Substitute = { fg = p.black, bg = p.red },
   MatchParen = { fg = p.yellow, bg = p.guide, bold = true },
-  Pmenu = { fg = p.dim, bg = p.panel },
+  Pmenu = { fg = p.dim, bg = none },
   PmenuSel = { fg = p.white, bg = p.select, bold = true },
   PmenuSbar = { bg = p.line },
   PmenuThumb = { bg = p.mute },
-  PmenuKind = { fg = p.cyan, bg = p.panel },
-  PmenuExtra = { fg = p.mute, bg = p.panel },
+  PmenuKind = { fg = p.cyan, bg = none },
+  PmenuExtra = { fg = p.mute, bg = none },
   WildMenu = { link = "PmenuSel" },
   Title = { fg = p.cyan, bold = true },
   Directory = { fg = p.cyan },
@@ -67,6 +69,9 @@ local groups = {
   DiffChange = { bg = "#1a1a44" },
   DiffDelete = { fg = p.red, bg = "#330000" },
   DiffText = { bg = "#33337a" },
+  -- Claude quick-answer edits: removed lines red, added/changed lines green
+  VimesimalDiffAdd = { fg = p.green, bg = "#0f2e0f" },
+  VimesimalDiffDelete = { fg = p.red, bg = "#3a0f0f" },
   Cursor = { reverse = true },
 
   -- Syntax
