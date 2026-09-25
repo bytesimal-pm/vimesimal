@@ -17,6 +17,10 @@ vim.diagnostic.config({
   },
 })
 
+-- Color previews (Tailwind classes, CSS colors) as a small swatch before the
+-- text, instead of painting the text's background (bg-white became a white box).
+vim.lsp.document_color.enable(true, nil, { style = "virtual" })
+
 -- Neovim already maps: K hover, grn rename, gra code action, grr references,
 -- gri implementation, gO symbols, [d ]d diagnostics, <C-s> signature help.
 vim.api.nvim_create_autocmd("LspAttach", {
