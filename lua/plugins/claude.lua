@@ -1,6 +1,6 @@
 -- Claude Code in a split, via claudecode.nvim (Claude's IDE protocol: it sees
--- the current file/selection). Claude's edits to open files are reviewed inline
--- in the code window (green/red, y keep / n undo), see lua/vimesimal/claude.lua.
+-- the current file/selection). Claude proposes each edit in the code window
+-- (green/red, y apply / n reject) before it's written; see lua/vimesimal/claude.lua.
 -- Prompt popup, quick answers and :ClaudeConfig live in lua/vimesimal/claude.lua.
 
 local function claude(fn)
@@ -39,6 +39,12 @@ return {
         end
         -- Watch open files so Claude's edits get the inline review
         require("vimesimal.claude").watch_start()
+        -- Save open files when you go to Claude, so it edits what you see
+        -- (unsaved edits would conflict with Claude's change on disk)
+        vim.api.nvim_create_autocmd({ "BufEnter", "TermEnter" }, {
+          group = group, buffer = ev.buf,
+          callback = function() require("vimesimal.claude").save_all() end,
+        })
       end,
     })
     vim.api.nvim_create_autocmd("TermClose", {
@@ -53,9 +59,8 @@ return {
   end,
   config = function(_, opts)
     require("claudecode").setup(opts)
-    -- Drop the side-by-side diff tool: edits go straight to the file and are
-    -- reviewed inline instead (Claude still asks in its terminal unless it's
-    -- in auto / accept-edits mode).
-    require("claudecode.tools").tools.openDiff = nil
+    -- Proposed edits show in the real file (green/red) and wait for y / n,
+    -- instead of claudecode's side-by-side diff (lua/vimesimal/claude.lua)
+    require("vimesimal.claude").register_tools()
   end,
 }

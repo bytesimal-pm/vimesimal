@@ -100,7 +100,7 @@ You don't need to edit anything under `lua/config/` or `lua/plugins/`.
 
 ## Claude Code
 
-Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol: it sees your file and selection). Whenever Claude changes a file you have open (from the chat or `<Space>ae`), the change shows right in the code: changed/added lines green, removed lines as red ghost lines, and a bar at the top: `y` keep, `n` undo.
+Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol: it sees your file and selection). In the default `manual` mode every edit Claude wants to make is **proposed in your code window first**: the file shows the new text with changed/added lines green and removed lines as red ghost lines, nothing is written yet, and Claude waits. `y` applies it, `n` rejects it (Claude is told). You can also tweak the proposed text before `y`, or answer in Claude's own prompt. Open files are saved when you switch to Claude so it edits what you see. In `auto`/`acceptEdits` mode (`:ClaudeConfig`), changes are applied first and then shown the same way with `y` keep / `n` undo.
 
 | Key | Action |
 |---|---|
@@ -111,7 +111,7 @@ Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol
 | `<Space>am` | pick a model for this session |
 | `Ctrl-h` / `Ctrl-l` | leave the Claude terminal like any split (`Esc` stays with Claude) |
 
-`:ClaudeConfig` opens a menu for model, permission mode and window side/width. Settings are saved to `~/.local/share/nvim/vimesimal-claude.json` and apply to the next session.
+`:ClaudeConfig` opens a menu for model, permission mode (`manual` review first, `acceptEdits`, `auto`, `plan`) and window side/width. Settings are saved to `~/.local/share/nvim/vimesimal-claude.json` and apply to the next session.
 
 ## tmux
 

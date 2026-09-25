@@ -9,7 +9,8 @@
 local M = {}
 
 local path = vim.fn.stdpath("data") .. "/vimesimal-claude.json"
-local defaults = { model = "default", permission_mode = "default", side = "right", width = 0.40 }
+-- permission_mode "manual": Claude proposes each edit and waits (reviewed in the code window)
+local defaults = { model = "default", permission_mode = "manual", side = "right", width = 0.40 }
 
 -- Settings ---------------------------------------------------------------------
 
@@ -17,7 +18,9 @@ function M.load()
   local ok, data = pcall(function()
     return vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
   end)
-  return vim.tbl_extend("force", vim.deepcopy(defaults), ok and type(data) == "table" and data or {})
+  local settings = vim.tbl_extend("force", vim.deepcopy(defaults), ok and type(data) == "table" and data or {})
+  if settings.permission_mode == "default" then settings.permission_mode = "manual" end -- old name
+  return settings
 end
 
 function M.save(settings)
@@ -30,7 +33,7 @@ function M.cmd(s)
   s = s or M.load()
   local cmd = "claude"
   if s.model ~= "default" then cmd = cmd .. " --model " .. s.model end
-  if s.permission_mode ~= "default" then cmd = cmd .. " --permission-mode " .. s.permission_mode end
+  cmd = cmd .. " --permission-mode " .. s.permission_mode
   return cmd
 end
 
@@ -140,6 +143,7 @@ end
 function M.prompt()
   local ctx = context()
   input("Claude chat", ctx.first and label(ctx), function(text)
+    M.save_all() -- Claude reads files from disk: save what's on screen
     when_connected(function()
       if ctx.first then
         vim.cmd(("ClaudeCodeAdd %s %d %d"):format(vim.fn.fnameescape(ctx.file), ctx.first, ctx.last))
@@ -365,10 +369,14 @@ local function start_review(bufnr, path, before, after, reply)
 end
 
 -- Watching files for the chat split --------------------------------------------
--- While the Claude split runs, files open in Neovim are watched; when one
--- changes on disk (Claude edited it) it's reloaded and reviewed inline.
+-- While the Claude split runs, files open in Neovim are watched. On a change
+-- the watcher remembers the buffer's text and triggers Neovim's reload; after
+-- the reload (FileChangedShellPost) the change is reviewed inline. The
+-- FileChangedShell hook below also replaces the W11/W12 prompts for our own
+-- writes and for reloads during a review.
 
 local watch = { active = false, dirs = {}, timers = {} }
+local pending = {} -- bufnr -> buffer lines just before a reload
 
 local function loaded_buf(path)
   for _, b in ipairs(vim.api.nvim_list_bufs()) do
@@ -377,18 +385,48 @@ local function loaded_buf(path)
 end
 
 local function on_disk_change(path)
-  if ignore[path] and vim.uv.now() < ignore[path] then return end
   local bufnr = loaded_buf(path)
-  -- Skip buffers with your own unsaved edits: Neovim will ask about those itself
-  if not bufnr or vim.bo[bufnr].modified then return end
-  local ok, new = pcall(vim.fn.readfile, path)
-  if not ok then return end
-  local old = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  if vim.deep_equal(old, new) then return end -- e.g. you saved it
-  local before = reviews[bufnr] and reviews[bufnr].before or old
+  if not bufnr then return end
+  -- An unmodified buffer is reloaded by 'autoread' without FileChangedShell,
+  -- so remember its text here; FileChangedShellPost then starts the review.
+  local ours = ignore[path] and vim.uv.now() < ignore[path]
+  if not ours and not vim.bo[bufnr].modified and not pending[bufnr] then
+    local ok, new = pcall(vim.fn.readfile, path)
+    local old = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    if ok and not vim.deep_equal(old, new) then pending[bufnr] = old end
+  end
   vim.cmd.checktime(bufnr)
-  start_review(bufnr, path, before, new, nil)
 end
+
+local fcs = vim.api.nvim_create_augroup("vimesimal_claude_fcs", { clear = true })
+vim.api.nvim_create_autocmd("FileChangedShell", {
+  group = fcs,
+  callback = function(ev)
+    local path = vim.api.nvim_buf_get_name(ev.buf)
+    local reason = vim.v.fcs_reason
+    if ignore[path] and vim.uv.now() < ignore[path] then
+      vim.v.fcs_choice = "reload" -- our own write (undo / quick edit)
+    elseif reason == "changed" and (watch.active or reviews[ev.buf]) then
+      pending[ev.buf] = vim.api.nvim_buf_get_lines(ev.buf, 0, -1, false)
+      vim.v.fcs_choice = "reload"
+    elseif reason == "changed" or reason == "mode" or reason == "time" then
+      vim.v.fcs_choice = "reload" -- same as 'autoread' for an unmodified buffer
+    else
+      vim.v.fcs_choice = "ask" -- conflict with your unsaved edits, or deleted: let Neovim ask
+    end
+  end,
+})
+vim.api.nvim_create_autocmd("FileChangedShellPost", {
+  group = fcs,
+  callback = function(ev)
+    local old = pending[ev.buf]
+    pending[ev.buf] = nil
+    if not old then return end
+    local new = vim.api.nvim_buf_get_lines(ev.buf, 0, -1, false)
+    local before = reviews[ev.buf] and reviews[ev.buf].before or old
+    start_review(ev.buf, vim.api.nvim_buf_get_name(ev.buf), before, new, nil)
+  end,
+})
 
 local function watch_dir(dir)
   if watch.dirs[dir] then return end
@@ -437,6 +475,205 @@ function M.watch_stop()
     watch.timers[path] = nil
   end
 end
+
+-- Proposed edits (chat split, permission mode "manual") -------------------------
+-- Claude's IDE tool `openDiff` is replaced so a proposed edit shows in the real
+-- file: the buffer displays the new text (disk untouched) with green/red marks,
+-- Claude waits; y answers FILE_SAVED (Claude then writes the file) and n
+-- restores the buffer and answers DIFF_REJECTED.
+
+local proposals = {} -- tab_name -> { bufnr, path, before, finish }
+
+-- Save modified files so Claude (which reads from disk) sees what's on screen,
+-- except files showing a proposal: that text isn't accepted yet
+function M.save_all()
+  local previewing = {}
+  for _, p in pairs(proposals) do previewing[p.bufnr] = true end
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(b) and vim.bo[b].modified and vim.bo[b].buftype == ""
+      and vim.api.nvim_buf_get_name(b) ~= "" and not previewing[b] then
+      vim.api.nvim_buf_call(b, function() vim.cmd("silent! write") end)
+    end
+  end
+end
+
+-- Most recent normal editing window (not the Claude terminal, not a float)
+local function code_window()
+  local prev = vim.fn.win_getid(vim.fn.winnr("#"))
+  local function ok(w)
+    return w ~= 0 and vim.api.nvim_win_is_valid(w) and vim.api.nvim_win_get_config(w).relative == ""
+      and vim.bo[vim.api.nvim_win_get_buf(w)].buftype == ""
+  end
+  if ok(vim.api.nvim_get_current_win()) then return vim.api.nvim_get_current_win() end
+  if ok(prev) then return prev end
+  for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if ok(w) then return w end
+  end
+end
+
+local function to_lines(text)
+  local lines = vim.split(text, "\n", { plain = true })
+  if #lines > 0 and lines[#lines] == "" then table.remove(lines) end
+  return lines
+end
+
+function M.propose(params, done)
+  local path = vim.fs.normalize(params.old_file_path)
+  local tab = params.tab_name
+  if proposals[tab] then proposals[tab].finish(false) end -- replaced by a new one
+
+  local from_win = vim.api.nvim_get_current_win()
+  local win = code_window()
+  if not win then
+    vim.cmd("topleft vsplit")
+    win = vim.api.nvim_get_current_win()
+  end
+  local is_new = vim.uv.fs_stat(path) == nil
+  vim.api.nvim_win_call(win, function() vim.cmd.edit(vim.fn.fnameescape(path)) end)
+  local bufnr = vim.api.nvim_win_get_buf(win)
+  for t, p in pairs(proposals) do -- another pending proposal for this file
+    if p.bufnr == bufnr then p.finish(false) ; proposals[t] = nil end
+  end
+  if reviews[bufnr] then reviews[bufnr].finish(true) end
+  if vim.bo[bufnr].modified and not is_new then
+    ignore[path] = vim.uv.now() + 1500
+    vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent write") end)
+  end
+
+  local before = is_new and {} or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local after = to_lines(params.new_file_contents)
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, after)
+
+  local function redraw()
+    local now = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    return draw(bufnr, before, now)
+  end
+  local first_row, top_ghosts = redraw()
+  vim.api.nvim_set_current_win(win)
+  if first_row then
+    vim.api.nvim_win_set_cursor(win, { first_row + 1, 0 })
+    vim.cmd("normal! zz")
+    if top_ghosts and vim.fn.line("w0") == 1 then vim.fn.winrestview({ topline = 1, topfill = top_ghosts }) end
+  end
+
+  local group = vim.api.nvim_create_augroup("vimesimal_claude_proposal_" .. bufnr, { clear = true })
+  local settled = false
+  local function finish(apply)
+    if settled then return end
+    settled = true
+    proposals[tab] = nil
+    pcall(vim.api.nvim_del_augroup_by_id, group)
+    local text
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      vim.api.nvim_buf_clear_namespace(bufnr, diff_ns, 0, -1)
+      pcall(vim.keymap.del, "n", "y", { buffer = bufnr })
+      pcall(vim.keymap.del, "n", "n", { buffer = bufnr })
+      if apply then
+        -- Claude writes the file itself after FILE_SAVED (writing it here too
+        -- applied the edit twice). Keep showing the new text; its write then
+        -- reloads silently.
+        local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+        text = table.concat(lines, "\n") .. (#lines > 0 and "\n" or "")
+        ignore[path] = vim.uv.now() + 5000
+        vim.bo[bufnr].modified = false
+      elseif is_new then
+        pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
+      else
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, before)
+        vim.bo[bufnr].modified = false
+      end
+    end
+    bar.close()
+    render_bar()
+    if vim.api.nvim_win_is_valid(from_win) and from_win ~= win then vim.api.nvim_set_current_win(from_win) end
+    if apply then
+      done({ content = { { type = "text", text = "FILE_SAVED" }, { type = "text", text = text or params.new_file_contents } } })
+    else
+      done({ content = { { type = "text", text = "DIFF_REJECTED" }, { type = "text", text = tab } } })
+    end
+  end
+  proposals[tab] = { bufnr = bufnr, path = path, before = before, finish = finish }
+
+  vim.keymap.set("n", "y", function() finish(true) end, { buffer = bufnr, nowait = true, desc = "Apply Claude's edit" })
+  vim.keymap.set("n", "n", function() finish(false) end, { buffer = bufnr, nowait = true, desc = "Reject Claude's edit" })
+  -- You may adjust the proposal before applying it: keep the marks current
+  vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, { group = group, buffer = bufnr, callback = redraw })
+
+  bar.show({ ("%s: Claude wants to make this change"):format(vim.fn.fnamemodify(path, ":.")) },
+    "y apply · n reject", win)
+end
+
+-- Claude answered in its own terminal prompt (or moved on): drop our preview
+local function drop_proposal(tab)
+  local p = proposals[tab]
+  if not p then return false end
+  proposals[tab] = nil
+  ignore[p.path] = vim.uv.now() + 3000 -- Claude may write the file itself now
+  if vim.api.nvim_buf_is_valid(p.bufnr) then
+    vim.api.nvim_buf_clear_namespace(p.bufnr, diff_ns, 0, -1)
+    pcall(vim.keymap.del, "n", "y", { buffer = p.bufnr })
+    pcall(vim.keymap.del, "n", "n", { buffer = p.bufnr })
+    pcall(vim.api.nvim_del_augroup_by_name, "vimesimal_claude_proposal_" .. p.bufnr)
+    vim.api.nvim_buf_set_lines(p.bufnr, 0, -1, false, p.before)
+    vim.bo[p.bufnr].modified = false
+    vim.defer_fn(function()
+      if vim.api.nvim_buf_is_valid(p.bufnr) then vim.cmd.checktime(p.bufnr) end
+    end, 800)
+  end
+  bar.close()
+  render_bar()
+  return true
+end
+
+function M.register_tools()
+  -- The server requires "claudecode.tools.init" (not "claudecode.tools"), and
+  -- Lua keeps those as two separate module tables: register in the one it uses
+  local tools = require("claudecode.tools.init")
+  local original = tools.tools.openDiff
+  tools.register({
+    name = "openDiff",
+    schema = original and original.schema,
+    requires_coroutine = true,
+    handler = function(params)
+      for _, k in ipairs({ "old_file_path", "new_file_path", "new_file_contents", "tab_name" }) do
+        if not params[k] then
+          error({ code = -32602, message = "Invalid params", data = "Missing required parameter: " .. k })
+        end
+      end
+      local co = coroutine.running()
+      vim.schedule(function()
+        M.propose(params, function(result)
+          local ok, res = coroutine.resume(co, result)
+          local send = _G.claude_deferred_responses and _G.claude_deferred_responses[tostring(co)]
+          if send then
+            _G.claude_deferred_responses[tostring(co)] = nil
+            send(ok and res or { error = { code = -32603, message = "Internal error", data = tostring(res) } })
+          end
+        end)
+      end)
+      return coroutine.yield()
+    end,
+  })
+
+  local close = tools.tools.close_tab
+  if close and not close.vimesimal then
+    local orig_handler = close.handler
+    close.handler = function(params, ...)
+      if params and params.tab_name and drop_proposal(params.tab_name) then
+        return { content = { { type = "text", text = "TAB_CLOSED" } } }
+      end
+      return orig_handler(params, ...)
+    end
+    close.vimesimal = true
+  end
+end
+
+vim.api.nvim_create_autocmd("VimLeavePre", {
+  group = vim.api.nvim_create_augroup("vimesimal_claude_proposals", { clear = true }),
+  callback = function()
+    for _, p in pairs(proposals) do pcall(p.finish, false) end
+  end,
+})
 
 function M.quick()
   local ctx = context()
@@ -493,7 +730,13 @@ end
 
 local choices = {
   { key = "model", name = "Model", values = { "default", "opus", "sonnet", "haiku" } },
-  { key = "permission_mode", name = "Permission mode", values = { "default", "acceptEdits", "plan" } },
+  { key = "permission_mode", name = "Permission mode", values = { "manual", "acceptEdits", "auto", "plan" },
+    describe = {
+      manual = "manual: review every edit in Neovim first (y apply / n reject)",
+      acceptEdits = "acceptEdits: Claude edits directly; you review afterwards (y keep / n undo)",
+      auto = "auto: Claude decides; edits reviewed afterwards (y keep / n undo)",
+      plan = "plan: Claude only plans, no edits",
+    } },
   { key = "side", name = "Window side", values = { "right", "left" } },
   { key = "width", name = "Window width", values = { 0.30, 0.40, 0.50 } },
 }
@@ -508,7 +751,8 @@ function M.config()
   vim.ui.select(items, { prompt = "Claude settings" }, function(_, idx)
     if not idx then return end
     local c = choices[idx]
-    vim.ui.select(c.values, { prompt = c.name, format_item = show }, function(value)
+    local fmt = function(v) return c.describe and c.describe[v] or show(v) end
+    vim.ui.select(c.values, { prompt = c.name, format_item = fmt }, function(value)
       if value == nil then return end
       s[c.key] = value
       M.save(s)
