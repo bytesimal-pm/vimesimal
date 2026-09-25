@@ -38,7 +38,7 @@ npm install -g --prefix ~/.local vscode-langservers-extracted   # ESLint server 
 | Auto suggest | blink.cmp (LSP, paths, snippets, buffer words), signature help |
 | Nest | indent-blankline (current scope highlighted) |
 | Line | line numbers, cursorline, lualine, gitsigns |
-| Navigate | fzf-lua, nvim-tree, LSP go-to, which-key hints, vim-tmux-navigator |
+| Navigate | fzf-lua, nvim-tree, flash (jump to word), LSP go-to, which-key hints, vim-tmux-navigator |
 
 ## Keys
 
@@ -47,6 +47,7 @@ npm install -g --prefix ~/.local vscode-langservers-extracted   # ESLint server 
 | `<Space>f` / `g` / `b` / `/` / `r` | files / grep / buffers / lines / recent |
 | `<Space>o` / `S` / `D` | document symbols / workspace symbols / diagnostics list |
 | `<Space>e` | file tree (`l` open, `h` close) |
+| `s` + word + `Enter` | jump to any visible word (or press the label shown on a match); `S` selects a code block |
 | `gd` `gD` `gy` `grr` `gri` `K` | definition / declaration / type / references / impl / hover |
 | `[d` `]d` `<Space>d` | prev / next / show diagnostic under cursor |
 | `<Space>rn` `<Space>ca` `<Space>cf` | rename / code action / format |

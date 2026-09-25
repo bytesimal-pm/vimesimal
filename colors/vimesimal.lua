@@ -208,6 +208,10 @@ local groups = {
   NvimTreeFolderIcon = { fg = p.cyan },
   NvimTreeIndentMarker = { fg = p.guide },
   FzfLuaBorder = { link = "FloatBorder" },
+  FlashLabel = { fg = p.black, bg = p.magenta, bold = true }, -- press this to jump
+  FlashMatch = { fg = p.white, bg = p.select },
+  FlashCurrent = { fg = p.black, bg = p.yellow },
+  FlashBackdrop = { fg = p.faint },
 }
 
 for name, spec in pairs(groups) do
