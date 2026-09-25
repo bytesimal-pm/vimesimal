@@ -1,7 +1,8 @@
 -- Claude Code helpers on top of claudecode.nvim (lua/plugins/claude.lua):
---   M.prompt()  <leader>ae  popup -> sends the prompt (and selection) to the
---                           Claude split
---   M.quick()   <leader>aq  popup -> `claude -p`, answer in a floating window
+--   M.quick()   <leader>ae  popup -> `claude -p`: answers in a float and may
+--                           edit the current file (red/green diff, y keep / n undo)
+--   M.prompt()  <leader>ac  popup -> sends the prompt (and selection) to the
+--                           Claude split (chat)
 --   M.config()  :ClaudeConfig  menu for model / permissions / window
 -- Settings persist in stdpath("data")/vimesimal-claude.json.
 
@@ -138,7 +139,7 @@ end
 
 function M.prompt()
   local ctx = context()
-  input("Ask Claude", ctx.first and label(ctx), function(text)
+  input("Claude chat", ctx.first and label(ctx), function(text)
     when_connected(function()
       if ctx.first then
         vim.cmd(("ClaudeCodeAdd %s %d %d"):format(vim.fn.fnameescape(ctx.file), ctx.first, ctx.last))
@@ -256,7 +257,7 @@ function M.quick()
   local path = vim.api.nvim_buf_get_name(bufnr)
   local editable = vim.bo[bufnr].buftype == "" and path ~= "" and vim.uv.fs_stat(path) ~= nil
 
-  input("Quick answer", label(ctx), function(text)
+  input("Claude edit", label(ctx), function(text)
     local prompt = text
     if ctx.lines then
       prompt = ("%s\n\nContext: %s lines %d-%d:\n```\n%s\n```"):format(

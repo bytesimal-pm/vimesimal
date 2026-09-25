@@ -104,9 +104,9 @@ Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol
 
 | Key | Action |
 |---|---|
-| `<Space>ae` | popup: ask Claude (starts the split if needed); in visual mode the selection goes along as `@file#L10-24` |
-| `<Space>aq` | popup: quick answer via `claude -p` in a floating window. It may also edit the current file (Claude gets only Read + Edit); the change shows as a red/green diff: `y` keep, `n` undo |
-| `<Space>aa` / `<Space>ac` | toggle the Claude split / continue the last conversation |
+| `<Space>ae` | popup: **edit** / quick answer via `claude -p`. It may edit the current file (Claude gets only Read + Edit); the change shows as a red/green diff: `y` keep, `n` undo. In visual mode the selection goes along |
+| `<Space>ac` | popup: **chat**, sent to the Claude split (starts it if needed); in visual mode the selection goes along as `@file#L10-24` |
+| `<Space>aa` / `<Space>ar` | toggle the Claude split / resume the last conversation |
 | `<Space>af` / `<Space>as` | add the current file / send the selection |
 | `<Space>ay` / `<Space>an` | accept / reject Claude's proposed diff |
 | `<Space>am` | pick a model for this session |

@@ -14,10 +14,10 @@ return {
     "ClaudeCodeClose", "ClaudeCodeDiffAccept", "ClaudeCodeDiffDeny",
   },
   keys = {
-    { "<leader>ae", claude("prompt"), mode = { "n", "x" }, desc = "Claude: ask (popup)" },
-    { "<leader>aq", claude("quick"), mode = { "n", "x" }, desc = "Claude: quick answer" },
+    { "<leader>ae", claude("quick"), mode = { "n", "x" }, desc = "Claude: edit / quick answer (popup)" },
+    { "<leader>ac", claude("prompt"), mode = { "n", "x" }, desc = "Claude: chat (popup -> split)" },
     { "<leader>aa", "<cmd>ClaudeCode<cr>", desc = "Claude: toggle window" },
-    { "<leader>ac", "<cmd>ClaudeCode --continue<cr>", desc = "Claude: continue last chat" },
+    { "<leader>ar", "<cmd>ClaudeCode --continue<cr>", desc = "Claude: resume last chat" },
     { "<leader>af", "<cmd>ClaudeCodeAdd %<cr>", desc = "Claude: add current file" },
     { "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "x", desc = "Claude: send selection" },
     { "<leader>am", "<cmd>ClaudeCodeSelectModel<cr>", desc = "Claude: pick model" },
