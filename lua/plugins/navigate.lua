@@ -19,6 +19,14 @@ return {
       { "<leader>S", fzf("lsp_live_workspace_symbols"), desc = "Workspace symbols" },
       { "<leader>D", fzf("diagnostics_document"), desc = "Diagnostics list" },
     },
+    init = function()
+      -- Pickers (vim.ui.select: :ClaudeConfig, LSP code actions) as an fzf popup.
+      -- Swaps itself for fzf-lua's version on first use, loading the plugin.
+      vim.ui.select = function(...)
+        require("fzf-lua").register_ui_select()
+        return vim.ui.select(...)
+      end
+    end,
     opts = {
       fzf_colors = true,
       winopts = { border = "single", preview = { border = "single" } },

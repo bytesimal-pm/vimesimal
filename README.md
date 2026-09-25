@@ -98,6 +98,22 @@ Servers turn on by themselves once their binary is installed. Spacing files call
 
 You don't need to edit anything under `lua/config/` or `lua/plugins/`.
 
+## Claude Code
+
+Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol: it sees your file and selection, and its edits open as diffs).
+
+| Key | Action |
+|---|---|
+| `<Space>ae` | popup: ask Claude (starts the split if needed); in visual mode the selection goes along as `@file#L10-24` |
+| `<Space>aq` | popup: quick answer via `claude -p`, shown in a floating window (`y` copies, `q` closes) |
+| `<Space>aa` / `<Space>ac` | toggle the Claude split / continue the last conversation |
+| `<Space>af` / `<Space>as` | add the current file / send the selection |
+| `<Space>ay` / `<Space>an` | accept / reject Claude's proposed diff |
+| `<Space>am` | pick a model for this session |
+| `Ctrl-h` / `Ctrl-l` | leave the Claude terminal like any split (`Esc` stays with Claude) |
+
+`:ClaudeConfig` opens a menu for model, permission mode and window side/width. Settings are saved to `~/.local/share/nvim/vimesimal-claude.json` and apply to the next session.
+
 ## tmux
 
 `tmux/tmux.conf` is linked to `~/.config/tmux/tmux.conf`. `Ctrl-h/j/k/l` moves between Neovim splits and tmux panes as one grid. Because `Ctrl-l` is taken, clear the shell with `<prefix> Ctrl-l`. Split with `<prefix> |` and `<prefix> -`. The config also turns on true color, wavy underlines and a short Esc delay so Neovim looks and feels the same inside tmux.

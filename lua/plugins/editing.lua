@@ -17,5 +17,12 @@ return {
     },
     opts = { formatters_by_ft = {}, formatters = {} },
   },
-  { "folke/which-key.nvim", event = "VeryLazy", opts = { win = { border = "single" } } },
+  {
+    "folke/which-key.nvim",
+    event = "VeryLazy",
+    opts = {
+      win = { border = "single" },
+      spec = { { "<leader>a", group = "AI / Claude" } },
+    },
+  },
 }
