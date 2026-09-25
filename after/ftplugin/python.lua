@@ -1,2 +1,2 @@
--- Python spacing: 4 spaces (PEP 8).
-require("vimesimal.spacing").set({ width = 4 })
+-- Python spacing (see lua/vimesimal/spacing.lua): 4 spaces.
+require("vimesimal.spacing").apply()

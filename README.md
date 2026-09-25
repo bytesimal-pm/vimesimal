@@ -78,7 +78,7 @@ Hard tabs, 8 wide, no line wrapping, kernel `cinoptions`, `.h` treated as C. `<S
 | TypeScript / TSX / JS (Next.js) | 2 spaces, tree-sitter indent | ts_ls, tailwindcss, eslint, prettier (`<Space>cf`) | `lang/typescript.lua`, `ftplugin/typescript.lua`, `indent/typescript.lua` |
 | JSON, TOML, CSS/QSS, GLSL | 4 spaces | jsonls, taplo | `lang/data.lua` |
 
-Servers turn on by themselves once their binary is installed. Spacing files call `require("vimesimal.spacing").set({ width = 4 })` (add `tabs = true` for hard tabs). For Quickshell types in QML, keep an empty `.qmlls.ini` in the shell folder; Quickshell fills in the import paths.
+Servers turn on by themselves once their binary is installed. Indentation per language lives in one table, `M.styles` in `lua/vimesimal/spacing.lua`; spacing files just call `require("vimesimal.spacing").apply()`. Claude gets the same rules and its proposed edits are re-indented to them. For Quickshell types in QML, keep an empty `.qmlls.ini` in the shell folder; Quickshell fills in the import paths.
 
 ## NASM: 8 spaces
 
@@ -93,7 +93,7 @@ Servers turn on by themselves once their binary is installed. Spacing files call
      { "stevearc/conform.nvim", opts = { formatters_by_ft = { python = { "ruff_format" } } } },
    }
    ```
-2. `after/ftplugin/<name>.lua`: `require("vimesimal.spacing").set({ width = 4 })`
+2. Indentation: add the filetype to `M.styles` in `lua/vimesimal/spacing.lua`, and `after/ftplugin/<name>.lua` with `require("vimesimal.spacing").apply()`
 3. Tree-sitter parser: in the lang file, `{ "nvim-treesitter/nvim-treesitter", opts = function(_, o) vim.list_extend(o.parsers, { "<name>" }) end }`
 
 You don't need to edit anything under `lua/config/` or `lua/plugins/`.

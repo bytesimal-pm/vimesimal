@@ -1,2 +1,2 @@
--- QML spacing: 4 spaces (matches the Quickshell config).
-require("vimesimal.spacing").set({ width = 4 })
+-- QML spacing (see lua/vimesimal/spacing.lua): 4 spaces.
+require("vimesimal.spacing").apply()

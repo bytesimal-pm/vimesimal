@@ -41,10 +41,16 @@ function M.cmd(s)
   local cmd = "claude"
   if s.model ~= "default" then cmd = cmd .. " --model " .. s.model end
   cmd = cmd .. " --permission-mode " .. s.permission_mode
-  if not s.build_checks then
-    cmd = cmd .. " --append-system-prompt " .. vim.fn.shellescape(no_build_checks)
-  end
-  return cmd
+  return cmd .. " --append-system-prompt " .. vim.fn.shellescape(M.instructions(s))
+end
+
+-- Extra instructions for Claude: the editor's indentation rules, and (unless
+-- enabled) no compiling/running just to check its own work
+function M.instructions(s)
+  s = s or M.load()
+  local parts = { require("vimesimal.spacing").describe() }
+  if not s.build_checks then parts[#parts + 1] = no_build_checks end
+  return table.concat(parts, "\n\n")
 end
 
 -- Options handed to claudecode.nvim's setup()
@@ -552,6 +558,15 @@ function M.propose(params, done)
 
   local before = is_new and {} or vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local after = to_lines(params.new_file_contents)
+  -- Enforce the editor's indentation on the lines Claude added or changed
+  local spacing = require("vimesimal.spacing")
+  local style = spacing.style(vim.bo[bufnr].filetype, path)
+  local changed = {}
+  for _, h in ipairs(vim.diff(table.concat(before, "\n") .. "\n", table.concat(after, "\n") .. "\n",
+    { result_type = "indices" }) or {}) do
+    for i = h[3], h[3] + h[4] - 1 do changed[#changed + 1] = i end
+  end
+  after = spacing.normalize(after, style, changed)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, after)
 
   local function redraw()
@@ -717,6 +732,7 @@ function M.quick()
     end
     table.insert(cmd, 3, prompt)
     if s.model ~= "default" then vim.list_extend(cmd, { "--model", s.model }) end
+    vim.list_extend(cmd, { "--append-system-prompt", M.instructions(s) })
 
     local win = vim.api.nvim_get_current_win()
     bar.show({ "Working on it…" }, nil, win)
