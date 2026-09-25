@@ -13,7 +13,12 @@ return {
     opts = {
       servers = {
         -- Arch names the binary qmlls6 (qt6-declarative)
-        qmlls = { cmd = { "qmlls6" } },
+        qmlls = {
+          cmd = { "qmlls6" },
+          -- Root at the folder holding .qmlls.ini (the Quickshell config), so
+          -- qmlls uses Quickshell's generated qmldir (singletons, types)
+          root_dir = require("vimesimal.root").project_or_dir({ ".qmlls.ini", ".git" }),
+        },
       },
     },
   },

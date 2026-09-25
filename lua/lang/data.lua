@@ -13,7 +13,8 @@ return {
     opts = {
       servers = {
         jsonls = { bin = "vscode-json-language-server" },
-        taplo = {},
+        -- Without a root, taplo "excludes" the file (e.g. ~/.config/starship.toml)
+        taplo = { root_dir = require("vimesimal.root").project_or_dir({ ".taplo.toml", "taplo.toml", ".git" }) },
       },
     },
   },

@@ -7,7 +7,11 @@ return {
     "folke/lazydev.nvim",
     ft = "lua",
     opts = {
-      library = { { path = "${3rd}/luv/library", words = { "vim%.uv" } } },
+      library = {
+        { path = "${3rd}/luv/library", words = { "vim%.uv" } },
+        -- Hyprland's Lua config API (hl.*), shipped with the hyprland package
+        { path = "/usr/share/hypr/stubs", words = { "hl%." } },
+      },
     },
   },
   {
@@ -15,6 +19,10 @@ return {
     opts = {
       servers = {
         lua_ls = {
+          -- Also check lone .lua files and symlinked configs (hyprland.lua)
+          root_dir = require("vimesimal.root").project_or_dir({
+            ".luarc.json", ".luarc.jsonc", ".stylua.toml", "stylua.toml", ".git",
+          }, { follow_symlinks = true }),
           settings = {
             Lua = {
               completion = { callSnippet = "Replace" },
