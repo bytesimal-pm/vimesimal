@@ -152,38 +152,19 @@ function M.prompt()
   end)
 end
 
--- Quick answer (claude -p) -----------------------------------------------------
--- Answers in a popup. With a real file open, Claude may also edit that file
--- (tools limited to Read + Edit); the change is shown as a red/green diff and
--- can be kept (y) or undone (n).
+-- Quick edit / answer (claude -p) ---------------------------------------------
+-- With a real file open, Claude may edit it (tools limited to Read + Edit).
+-- The change is shown in the code window like VS Code: added/changed lines
+-- green, removed lines as red ghost lines, and a small bar at the top with
+-- y keep / n undo. Plain questions get a centered answer popup.
 
 local diff_ns = vim.api.nvim_create_namespace("vimesimal.claude.diff")
 
--- Unified-style diff lines between two line lists, with some context.
--- Returns { { text, kind } } where kind is "add", "del" or "ctx".
-local function diff_lines(old, new, context_n)
-  context_n = context_n or 2
-  local hunks = vim.diff(table.concat(old, "\n") .. "\n", table.concat(new, "\n") .. "\n",
-    { result_type = "indices" }) or {}
-  local out = {}
-  for h, hunk in ipairs(hunks) do
-    local sa, ca, sb, cb = hunk[1], hunk[2], hunk[3], hunk[4]
-    if h > 1 then out[#out + 1] = { "  …", "ctx" } end
-    -- a count of 0 means "insert after line s"; context starts after it
-    local first = (ca > 0 and sa or sa + 1)
-    for i = math.max(1, first - context_n), first - 1 do out[#out + 1] = { "  " .. old[i], "ctx" } end
-    for i = sa, sa + ca - 1 do out[#out + 1] = { "- " .. old[i], "del" } end
-    for i = sb, sb + cb - 1 do out[#out + 1] = { "+ " .. new[i], "add" } end
-    local after = sa + ca
-    for i = after, math.min(#old, after + context_n - 1) do out[#out + 1] = { "  " .. old[i], "ctx" } end
-  end
-  return out
-end
-
+-- Centered popup with an answer (q/Esc close, y copy)
 local function answer_window(lines)
   local buf = vim.api.nvim_create_buf(false, true)
   local width = math.min(100, math.floor(vim.o.columns * 0.75))
-  local height = math.min(30, math.floor(vim.o.lines * 0.6))
+  local height = math.min(30, math.max(3, #lines + 1))
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
     row = math.floor((vim.o.lines - height) / 2),
@@ -197,57 +178,140 @@ local function answer_window(lines)
     footer = " q close · y copy ",
     footer_pos = "right",
   })
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
   vim.bo[buf].bufhidden = "wipe"
   vim.bo[buf].filetype = "markdown"
   vim.wo[win].wrap = true
   vim.wo[win].linebreak = true
-
   local map = function(lhs, rhs) vim.keymap.set("n", lhs, rhs, { buffer = buf, nowait = true }) end
   local function close()
     if vim.api.nvim_win_is_valid(win) then vim.api.nvim_win_close(win, true) end
   end
-  local function copy()
-    vim.fn.setreg("+", table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n"))
-    vim.notify("Answer copied")
-  end
   map("q", close)
   map("<Esc>", close)
-  map("y", copy)
+  map("y", function()
+    vim.fn.setreg("+", table.concat(lines, "\n"))
+    vim.notify("Answer copied")
+  end)
+end
 
-  local ui = {}
-  -- Replace the text; diff = { { text, kind } } is appended with red/green lines
-  function ui.set(text_lines, diff)
+-- Small bar anchored to the top-right of the editor. It doesn't take focus.
+local function top_bar()
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].bufhidden = "wipe"
+  local win
+  local bar = {}
+  function bar.set(lines, footer)
     if not vim.api.nvim_buf_is_valid(buf) then return end
-    local all = vim.list_extend({}, text_lines)
-    local diff_start = #all
-    for _, d in ipairs(diff or {}) do all[#all + 1] = d[1] end
-    vim.bo[buf].modifiable = true
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, all)
-    vim.bo[buf].modifiable = false
-    vim.api.nvim_buf_clear_namespace(buf, diff_ns, 0, -1)
-    for i, d in ipairs(diff or {}) do
-      local group = d[2] == "add" and "VimesimalDiffAdd" or d[2] == "del" and "VimesimalDiffDelete" or nil
-      if group then
-        local row = diff_start + i - 1
-        vim.api.nvim_buf_set_extmark(buf, diff_ns, row, 0, {
-          end_row = row, end_col = #d[1], hl_group = group, line_hl_group = group, priority = 200,
-        })
-      end
+    local width = math.min(70, math.floor(vim.o.columns * 0.5))
+    local height = 0
+    for _, l in ipairs(lines) do height = height + math.max(1, math.ceil(vim.fn.strdisplaywidth(l) / width)) end
+    local cfg = {
+      relative = "editor", anchor = "NE", row = 1, col = vim.o.columns - 1,
+      width = width, height = math.min(height, 8),
+      style = "minimal", border = "single", focusable = false, zindex = 60,
+      title = " Claude ", title_pos = "left",
+    }
+    if footer then cfg.footer, cfg.footer_pos = " " .. footer .. " ", "right" end
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    if win and vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_set_config(win, cfg)
+    else
+      win = vim.api.nvim_open_win(buf, false, cfg)
+      vim.wo[win].wrap = true
+      vim.wo[win].linebreak = true
     end
   end
-  -- Swap the footer/keys for a pending edit: y keep, n undo
-  function ui.review(on_undo)
-    if not vim.api.nvim_win_is_valid(win) then return end
-    vim.api.nvim_win_set_config(win, { footer = " y keep · n undo · Y copy · q close ", footer_pos = "right" })
-    map("y", close)
-    map("Y", copy)
-    map("n", function()
-      on_undo()
-      close()
+  function bar.close()
+    if win and vim.api.nvim_win_is_valid(win) then vim.api.nvim_win_close(win, true) end
+  end
+  return bar
+end
+
+-- Tabs -> spaces so ghost lines line up with the real code
+local function expand(line, ts)
+  return (line:gsub("\t", string.rep(" ", ts)))
+end
+
+-- Show old -> new of `bufnr` inline and wait for y (keep) / n (undo)
+local function review(bufnr, path, before, after, bar, reply)
+  local win = vim.fn.bufwinid(bufnr)
+  local width = win ~= -1 and vim.api.nvim_win_get_width(win) or vim.o.columns
+  local ts = vim.bo[bufnr].tabstop
+  local hunks = vim.diff(table.concat(before, "\n") .. "\n", table.concat(after, "\n") .. "\n",
+    { result_type = "indices" }) or {}
+
+  vim.api.nvim_buf_clear_namespace(bufnr, diff_ns, 0, -1)
+  local first_row, top_ghosts
+  for _, h in ipairs(hunks) do
+    local sa, ca, sb, cb = h[1], h[2], h[3], h[4]
+    -- Added / changed lines: green background, green bar in the gutter
+    for row = sb - 1, sb + cb - 2 do
+      vim.api.nvim_buf_set_extmark(bufnr, diff_ns, row, 0, {
+        line_hl_group = "VimesimalDiffAddLine", sign_text = "┃",
+        sign_hl_group = "VimesimalDiffAddSign", priority = 200,
+      })
+    end
+    -- Removed lines: red ghost lines where they used to be
+    if ca > 0 then
+      local ghost = {}
+      for i = sa, sa + ca - 1 do
+        local text = expand(before[i], ts)
+        ghost[#ghost + 1] = { { text .. string.rep(" ", math.max(0, width - vim.fn.strdisplaywidth(text))),
+          "VimesimalDiffDelete" } }
+      end
+      local row, above = sb - 1, true
+      if cb == 0 then row, above = math.max(sb - 1, 0), sb == 0 end -- pure delete: below line sb
+      row = math.min(row, vim.api.nvim_buf_line_count(bufnr) - 1)
+      vim.api.nvim_buf_set_extmark(bufnr, diff_ns, row, 0, { virt_lines = ghost, virt_lines_above = above })
+      if row == 0 and above then top_ghosts = #ghost end
+    end
+    first_row = first_row or math.max(0, sb - 1)
+  end
+  if win ~= -1 and first_row then
+    vim.api.nvim_win_set_cursor(win, { first_row + 1, 0 })
+    vim.api.nvim_win_call(win, function()
+      vim.cmd("normal! zz")
+      -- Ghost lines above line 1 only show when the view is scrolled to them
+      if top_ghosts and vim.fn.line("w0") == 1 then
+        vim.fn.winrestview({ topline = 1, topfill = top_ghosts })
+      end
     end)
   end
-  ui.set(lines)
-  return ui
+
+  bar.set(reply, "y keep · n undo")
+
+  local done = false
+  local group = vim.api.nvim_create_augroup("vimesimal_claude_review", { clear = true })
+  local function finish(keep)
+    if done then return end
+    done = true
+    pcall(vim.api.nvim_del_augroup_by_id, group)
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      vim.api.nvim_buf_clear_namespace(bufnr, diff_ns, 0, -1)
+      pcall(vim.keymap.del, "n", "y", { buffer = bufnr })
+      pcall(vim.keymap.del, "n", "n", { buffer = bufnr })
+    end
+    bar.close()
+    if not keep then
+      vim.fn.writefile(before, path)
+      if vim.api.nvim_buf_is_valid(bufnr) then vim.cmd.checktime(bufnr) end
+      vim.notify("Claude's change undone")
+    end
+  end
+  -- y / n only while the review is open, only in this buffer
+  vim.keymap.set("n", "y", function() finish(true) end, { buffer = bufnr, nowait = true, desc = "Keep Claude's change" })
+  vim.keymap.set("n", "n", function() finish(false) end, { buffer = bufnr, nowait = true, desc = "Undo Claude's change" })
+  -- Editing the file yourself means you kept it. The reload of Claude's edit
+  -- fires TextChanged too (later), so only count changes after this point.
+  local tick = vim.api.nvim_buf_get_changedtick(bufnr)
+  vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+    group = group, buffer = bufnr,
+    callback = function()
+      if vim.api.nvim_buf_get_changedtick(bufnr) ~= tick then finish(true) end
+    end,
+  })
 end
 
 function M.quick()
@@ -275,35 +339,26 @@ function M.quick()
       end
       before = vim.fn.readfile(path)
       prompt = prompt .. ("\n\nIf this asks for a change, apply it directly to %s with the Edit tool "
-        .. "(don't just describe it), then reply in one or two sentences."):format(path)
+        .. "(don't just describe it), then reply in one short sentence."):format(path)
       -- Only Read and Edit exist for this run, pre-approved so -p doesn't refuse
       vim.list_extend(cmd, { "--tools", "Read,Edit", "--allowedTools", "Read,Edit" })
     end
     table.insert(cmd, 3, prompt)
     if s.model ~= "default" then vim.list_extend(cmd, { "--model", s.model }) end
 
-    local ui = answer_window({ "Thinking…" })
+    local bar = top_bar()
+    bar.set({ "Working on it…" })
     vim.system(cmd, { text = true }, vim.schedule_wrap(function(res)
       local out = res.code == 0 and res.stdout or ("Error (exit " .. res.code .. "):\n" .. (res.stderr or ""))
       local reply = vim.split(vim.trim(out), "\n")
       local after = editable and vim.fn.readfile(path) or nil
       if not (after and not vim.deep_equal(before, after)) then
-        return ui.set(reply)
+        bar.close()
+        return answer_window(reply)
       end
-
-      -- Claude edited the file: show it in the buffer and as a diff
-      local function reload()
-        if vim.api.nvim_buf_is_valid(bufnr) then vim.cmd.checktime(bufnr) end
-      end
-      reload()
-      table.insert(reply, "")
-      table.insert(reply, ("── %s changes ──"):format(vim.fn.fnamemodify(path, ":.")))
-      ui.set(reply, diff_lines(before, after))
-      ui.review(function()
-        vim.fn.writefile(before, path)
-        reload()
-        vim.notify("Claude's change undone")
-      end)
+      -- Claude edited the file: reload it and review the change inline
+      if vim.api.nvim_buf_is_valid(bufnr) then vim.cmd.checktime(bufnr) end
+      review(bufnr, path, before, after, bar, reply)
     end))
   end)
 end

@@ -69,8 +69,10 @@ local groups = {
   DiffChange = { bg = "#1a1a44" },
   DiffDelete = { fg = p.red, bg = "#330000" },
   DiffText = { bg = "#33337a" },
-  -- Claude quick-answer edits: removed lines red, added/changed lines green
-  VimesimalDiffAdd = { fg = p.green, bg = "#0f2e0f" },
+  -- Claude edits shown in the code: added/changed lines green (syntax colors
+  -- kept), removed lines as red ghost lines
+  VimesimalDiffAddLine = { bg = "#0f2e0f" },
+  VimesimalDiffAddSign = { fg = p.green },
   VimesimalDiffDelete = { fg = p.red, bg = "#3a0f0f" },
   Cursor = { reverse = true },
 
