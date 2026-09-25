@@ -100,7 +100,7 @@ You don't need to edit anything under `lua/config/` or `lua/plugins/`.
 
 ## Claude Code
 
-Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol: it sees your file and selection, and its edits open as diffs).
+Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol: it sees your file and selection). Whenever Claude changes a file you have open (from the chat or `<Space>ae`), the change shows right in the code: changed/added lines green, removed lines as red ghost lines, and a bar at the top: `y` keep, `n` undo.
 
 | Key | Action |
 |---|---|
@@ -108,7 +108,6 @@ Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol
 | `<Space>ac` | popup: **chat**, sent to the Claude split (starts it if needed); in visual mode the selection goes along as `@file#L10-24` |
 | `<Space>aa` / `<Space>ar` | toggle the Claude split / resume the last conversation |
 | `<Space>af` / `<Space>as` | add the current file / send the selection |
-| `<Space>ay` / `<Space>an` | accept / reject Claude's proposed diff |
 | `<Space>am` | pick a model for this session |
 | `Ctrl-h` / `Ctrl-l` | leave the Claude terminal like any split (`Esc` stays with Claude) |
 

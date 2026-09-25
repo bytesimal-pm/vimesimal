@@ -144,9 +144,17 @@ function M.prompt()
       if ctx.first then
         vim.cmd(("ClaudeCodeAdd %s %d %d"):format(vim.fn.fnameescape(ctx.file), ctx.first, ctx.last))
       end
-      -- Give the @-mention a moment to land before the prompt is submitted
+      -- Give the @-mention a moment to land, then type the prompt and press
+      -- Enter separately: sent together, Claude reads a long prompt plus the
+      -- Enter as one paste and the Enter doesn't submit.
       vim.defer_fn(function()
-        require("claudecode.terminal").send_to_terminal(text, { submit = true })
+        local term = require("claudecode.terminal")
+        if not term.send_to_terminal(text, { submit = false }) then return end
+        vim.defer_fn(function()
+          local buf = term.get_active_terminal_bufnr()
+          local chan = buf and (vim.b[buf].terminal_job_id or vim.bo[buf].channel)
+          if chan and chan > 0 then pcall(vim.fn.chansend, chan, "\r") end
+        end, 200)
       end, ctx.first and 300 or 0)
     end)
   end)
@@ -196,37 +204,61 @@ local function answer_window(lines)
   end)
 end
 
--- Small bar anchored to the top-right of the editor. It doesn't take focus.
-local function top_bar()
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.bo[buf].bufhidden = "wipe"
-  local win
-  local bar = {}
-  function bar.set(lines, footer)
-    if not vim.api.nvim_buf_is_valid(buf) then return end
-    local width = math.min(70, math.floor(vim.o.columns * 0.5))
-    local height = 0
-    for _, l in ipairs(lines) do height = height + math.max(1, math.ceil(vim.fn.strdisplaywidth(l) / width)) end
-    local cfg = {
-      relative = "editor", anchor = "NE", row = 1, col = vim.o.columns - 1,
-      width = width, height = math.min(height, 8),
-      style = "minimal", border = "single", focusable = false, zindex = 60,
-      title = " Claude ", title_pos = "left",
-    }
-    if footer then cfg.footer, cfg.footer_pos = " " .. footer .. " ", "right" end
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-    if win and vim.api.nvim_win_is_valid(win) then
-      vim.api.nvim_win_set_config(win, cfg)
-    else
-      win = vim.api.nvim_open_win(buf, false, cfg)
-      vim.wo[win].wrap = true
-      vim.wo[win].linebreak = true
-    end
+-- Inline review ----------------------------------------------------------------
+-- Shared by <leader>ae (quick edit) and the chat split: when Claude changes a
+-- file that's open, the change shows in the code window (green = added or
+-- changed, red ghost lines = removed) with a bar at the top: y keep, n undo.
+-- Several edits to one file in a row stay one review against the original.
+
+local reviews = {} -- bufnr -> { path, before, reply, finish }
+local ignore = {} -- path -> uv.now() until which disk changes are ours, not Claude's
+
+-- Top bar: anchored to the top-right of a code window, never takes focus
+local bar = { buf = nil, win = nil }
+
+function bar.show(lines, footer, win)
+  win = (win and vim.api.nvim_win_is_valid(win)) and win or vim.api.nvim_get_current_win()
+  if not (bar.buf and vim.api.nvim_buf_is_valid(bar.buf)) then
+    bar.buf = vim.api.nvim_create_buf(false, true)
+    vim.bo[bar.buf].bufhidden = "wipe"
   end
-  function bar.close()
-    if win and vim.api.nvim_win_is_valid(win) then vim.api.nvim_win_close(win, true) end
+  local width = math.min(70, math.max(30, math.floor(vim.api.nvim_win_get_width(win) * 0.6)))
+  local height = 0
+  for _, l in ipairs(lines) do height = height + math.max(1, math.ceil(vim.fn.strdisplaywidth(l) / width)) end
+  local cfg = {
+    relative = "win", win = win, anchor = "NE", row = 0, col = vim.api.nvim_win_get_width(win),
+    width = width, height = math.min(height, 8),
+    style = "minimal", border = "single", focusable = false, zindex = 60,
+    title = " Claude ", title_pos = "left",
+  }
+  if footer then cfg.footer, cfg.footer_pos = " " .. footer .. " ", "right" end
+  vim.api.nvim_buf_set_lines(bar.buf, 0, -1, false, lines)
+  if bar.win and vim.api.nvim_win_is_valid(bar.win) then
+    vim.api.nvim_win_set_config(bar.win, cfg)
+  else
+    bar.win = vim.api.nvim_open_win(bar.buf, false, cfg)
+    vim.wo[bar.win].wrap = true
+    vim.wo[bar.win].linebreak = true
   end
-  return bar
+end
+
+function bar.close()
+  if bar.win and vim.api.nvim_win_is_valid(bar.win) then vim.api.nvim_win_close(bar.win, true) end
+  bar.win = nil
+end
+
+-- One line per file under review
+local function render_bar()
+  local lines, win = {}, nil
+  for bufnr, r in pairs(reviews) do
+    local name = vim.fn.fnamemodify(r.path, ":.")
+    local text = r.reply and table.concat(r.reply, " ") or "changed by Claude"
+    lines[#lines + 1] = ("%s: %s"):format(name, text)
+    local w = vim.fn.bufwinid(bufnr)
+    if w ~= -1 then win = w end
+  end
+  if #lines == 0 then return bar.close() end
+  bar.show(lines, "y keep · n undo  (in the file)", win)
 end
 
 -- Tabs -> spaces so ghost lines line up with the real code
@@ -234,14 +266,13 @@ local function expand(line, ts)
   return (line:gsub("\t", string.rep(" ", ts)))
 end
 
--- Show old -> new of `bufnr` inline and wait for y (keep) / n (undo)
-local function review(bufnr, path, before, after, bar, reply)
+-- Draw old -> new of `bufnr`; returns the first changed row and ghost count above line 1
+local function draw(bufnr, before, after)
   local win = vim.fn.bufwinid(bufnr)
   local width = win ~= -1 and vim.api.nvim_win_get_width(win) or vim.o.columns
   local ts = vim.bo[bufnr].tabstop
   local hunks = vim.diff(table.concat(before, "\n") .. "\n", table.concat(after, "\n") .. "\n",
     { result_type = "indices" }) or {}
-
   vim.api.nvim_buf_clear_namespace(bufnr, diff_ns, 0, -1)
   local first_row, top_ghosts
   for _, h in ipairs(hunks) do
@@ -269,6 +300,22 @@ local function review(bufnr, path, before, after, bar, reply)
     end
     first_row = first_row or math.max(0, sb - 1)
   end
+  return first_row, top_ghosts
+end
+
+-- Start (or extend) the review of `bufnr`: `before` is what the file was,
+-- `after` what Claude made it. The buffer must already show `after`.
+local function start_review(bufnr, path, before, after, reply)
+  local prev = reviews[bufnr]
+  if prev then
+    before = prev.before -- keep reviewing against the original
+    reply = reply or prev.reply
+    prev.finish(true, true)
+  end
+  if vim.deep_equal(before, after) then return render_bar() end
+
+  local first_row, top_ghosts = draw(bufnr, before, after)
+  local win = vim.fn.bufwinid(bufnr)
   if win ~= -1 and first_row then
     vim.api.nvim_win_set_cursor(win, { first_row + 1, 0 })
     vim.api.nvim_win_call(win, function()
@@ -280,26 +327,28 @@ local function review(bufnr, path, before, after, bar, reply)
     end)
   end
 
-  bar.set(reply, "y keep · n undo")
-
+  local group = vim.api.nvim_create_augroup("vimesimal_claude_review_" .. bufnr, { clear = true })
   local done = false
-  local group = vim.api.nvim_create_augroup("vimesimal_claude_review", { clear = true })
-  local function finish(keep)
+  local function finish(keep, silent)
     if done then return end
     done = true
+    reviews[bufnr] = nil
     pcall(vim.api.nvim_del_augroup_by_id, group)
     if vim.api.nvim_buf_is_valid(bufnr) then
       vim.api.nvim_buf_clear_namespace(bufnr, diff_ns, 0, -1)
       pcall(vim.keymap.del, "n", "y", { buffer = bufnr })
       pcall(vim.keymap.del, "n", "n", { buffer = bufnr })
     end
-    bar.close()
     if not keep then
+      ignore[path] = vim.uv.now() + 1500 -- our own write, not Claude's
       vim.fn.writefile(before, path)
       if vim.api.nvim_buf_is_valid(bufnr) then vim.cmd.checktime(bufnr) end
-      vim.notify("Claude's change undone")
+      vim.notify("Claude's change undone: " .. vim.fn.fnamemodify(path, ":."))
     end
+    if not silent then render_bar() end
   end
+  reviews[bufnr] = { path = path, before = before, reply = reply, finish = finish }
+
   -- y / n only while the review is open, only in this buffer
   vim.keymap.set("n", "y", function() finish(true) end, { buffer = bufnr, nowait = true, desc = "Keep Claude's change" })
   vim.keymap.set("n", "n", function() finish(false) end, { buffer = bufnr, nowait = true, desc = "Undo Claude's change" })
@@ -312,6 +361,81 @@ local function review(bufnr, path, before, after, bar, reply)
       if vim.api.nvim_buf_get_changedtick(bufnr) ~= tick then finish(true) end
     end,
   })
+  render_bar()
+end
+
+-- Watching files for the chat split --------------------------------------------
+-- While the Claude split runs, files open in Neovim are watched; when one
+-- changes on disk (Claude edited it) it's reloaded and reviewed inline.
+
+local watch = { active = false, dirs = {}, timers = {} }
+
+local function loaded_buf(path)
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(b) and vim.api.nvim_buf_get_name(b) == path then return b end
+  end
+end
+
+local function on_disk_change(path)
+  if ignore[path] and vim.uv.now() < ignore[path] then return end
+  local bufnr = loaded_buf(path)
+  -- Skip buffers with your own unsaved edits: Neovim will ask about those itself
+  if not bufnr or vim.bo[bufnr].modified then return end
+  local ok, new = pcall(vim.fn.readfile, path)
+  if not ok then return end
+  local old = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  if vim.deep_equal(old, new) then return end -- e.g. you saved it
+  local before = reviews[bufnr] and reviews[bufnr].before or old
+  vim.cmd.checktime(bufnr)
+  start_review(bufnr, path, before, new, nil)
+end
+
+local function watch_dir(dir)
+  if watch.dirs[dir] then return end
+  local handle = vim.uv.new_fs_event()
+  if not handle then return end
+  local ok = pcall(handle.start, handle, dir, {}, function(err, fname)
+    if err or not fname then return end
+    local path = dir .. "/" .. fname
+    vim.schedule(function()
+      -- Editors and tools write in bursts; react once it settles
+      local t = watch.timers[path] or vim.uv.new_timer()
+      watch.timers[path] = t
+      t:stop()
+      t:start(150, 0, vim.schedule_wrap(function() on_disk_change(path) end))
+    end)
+  end)
+  if ok then watch.dirs[dir] = handle else handle:close() end
+end
+
+local function watch_buf(bufnr)
+  local name = vim.api.nvim_buf_get_name(bufnr)
+  if name ~= "" and vim.bo[bufnr].buftype == "" then watch_dir(vim.fs.dirname(name)) end
+end
+
+function M.watch_start()
+  if watch.active then return end
+  watch.active = true
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(b) then watch_buf(b) end
+  end
+  vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
+    group = vim.api.nvim_create_augroup("vimesimal_claude_watch", { clear = true }),
+    callback = function(ev) watch_buf(ev.buf) end,
+  })
+end
+
+function M.watch_stop()
+  watch.active = false
+  pcall(vim.api.nvim_del_augroup_by_name, "vimesimal_claude_watch")
+  for dir, handle in pairs(watch.dirs) do
+    handle:stop(); handle:close()
+    watch.dirs[dir] = nil
+  end
+  for path, t in pairs(watch.timers) do
+    t:stop(); t:close()
+    watch.timers[path] = nil
+  end
 end
 
 function M.quick()
@@ -342,23 +466,25 @@ function M.quick()
         .. "(don't just describe it), then reply in one short sentence."):format(path)
       -- Only Read and Edit exist for this run, pre-approved so -p doesn't refuse
       vim.list_extend(cmd, { "--tools", "Read,Edit", "--allowedTools", "Read,Edit" })
+      ignore[path] = math.huge -- this edit is reviewed below, not by the watcher
     end
     table.insert(cmd, 3, prompt)
     if s.model ~= "default" then vim.list_extend(cmd, { "--model", s.model }) end
 
-    local bar = top_bar()
-    bar.set({ "Working on it…" })
+    local win = vim.api.nvim_get_current_win()
+    bar.show({ "Working on it…" }, nil, win)
     vim.system(cmd, { text = true }, vim.schedule_wrap(function(res)
+      if editable then ignore[path] = vim.uv.now() + 1500 end
       local out = res.code == 0 and res.stdout or ("Error (exit " .. res.code .. "):\n" .. (res.stderr or ""))
       local reply = vim.split(vim.trim(out), "\n")
       local after = editable and vim.fn.readfile(path) or nil
       if not (after and not vim.deep_equal(before, after)) then
-        bar.close()
+        render_bar() -- back to any other open reviews (or closed)
         return answer_window(reply)
       end
       -- Claude edited the file: reload it and review the change inline
       if vim.api.nvim_buf_is_valid(bufnr) then vim.cmd.checktime(bufnr) end
-      review(bufnr, path, before, after, bar, reply)
+      start_review(bufnr, path, before, after, reply)
     end))
   end)
 end
