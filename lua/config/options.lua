@@ -5,10 +5,13 @@ local opt = vim.opt
 vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
--- Tools installed with `cargo install` (asm-lsp) even if the shell PATH lacks them
-local cargo_bin = vim.fs.normalize("~/.cargo/bin")
-if vim.uv.fs_stat(cargo_bin) and not vim.env.PATH:find(cargo_bin, 1, true) then
-  vim.env.PATH = cargo_bin .. ":" .. vim.env.PATH
+-- Tools from `cargo install` (asm-lsp) and `npm install -g --prefix ~/.local`
+-- (ESLint server), even if the shell PATH lacks them
+for _, dir in ipairs({ "~/.cargo/bin", "~/.local/bin" }) do
+  dir = vim.fs.normalize(dir)
+  if vim.uv.fs_stat(dir) and not vim.env.PATH:find(dir, 1, true) then
+    vim.env.PATH = dir .. ":" .. vim.env.PATH
+  end
 end
 
 -- Terminal

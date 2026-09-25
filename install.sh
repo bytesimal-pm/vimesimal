@@ -28,6 +28,8 @@ packages=(
 	lua-language-server
 	# TOML, JSON
 	taplo-cli vscode-json-languageserver
+	# TypeScript / Next.js: TS server, Tailwind classes, Prettier (+ npm for ESLint)
+	nodejs npm typescript-language-server tailwindcss-language-server prettier
 )
 
 if command -v pacman >/dev/null; then
@@ -48,6 +50,13 @@ export PATH="$HOME/.cargo/bin:$PATH"
 if ! command -v asm-lsp >/dev/null && command -v cargo >/dev/null; then
 	echo "==> cargo: installing asm-lsp"
 	cargo install asm-lsp
+fi
+
+# ESLint's language server isn't packaged; install it into ~/.local (no sudo)
+export PATH="$HOME/.local/bin:$PATH"
+if ! command -v vscode-eslint-language-server >/dev/null && command -v npm >/dev/null; then
+	echo "==> npm: installing vscode-langservers-extracted into ~/.local"
+	npm install -g --prefix "$HOME/.local" vscode-langservers-extracted
 fi
 
 # --- Links --------------------------------------------------------------------
@@ -90,7 +99,8 @@ echo "==> check"
 missing=0
 for tool in nvim clangd clang-format rg fzf git curl tmux nasm asm-lsp tree-sitter \
 	qmlls6 pyright-langserver ruff bash-language-server shellcheck lua-language-server \
-	taplo vscode-json-language-server; do
+	taplo vscode-json-language-server typescript-language-server tailwindcss-language-server \
+	prettier vscode-eslint-language-server; do
 	if ! command -v "$tool" >/dev/null; then
 		echo "missing: $tool"
 		missing=1

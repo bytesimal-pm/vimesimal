@@ -145,6 +145,10 @@ local groups = {
   ["@operator"] = { link = "Operator" },
   ["@punctuation"] = { fg = p.gray },
   ["@punctuation.bracket"] = { fg = p.white },
+  ["@tag"] = { fg = p.type }, -- JSX components (<Image>), like QML components
+  ["@tag.builtin"] = { fg = p.func }, -- HTML elements (<div>, <main>)
+  ["@tag.attribute"] = { fg = p.member }, -- className, src, like properties
+  ["@tag.delimiter"] = { fg = p.gray }, -- < > />
   ["@comment"] = { link = "Comment" },
   ["@comment.todo"] = { link = "Todo" },
 

@@ -25,6 +25,8 @@ sudo pacman -S neovim clang   # clang provides clangd + clang-format
 sudo pacman -S nasm rust && cargo install asm-lsp   # NASM + assembly completion
 sudo pacman -S tree-sitter-cli pyright ruff bash-language-server shellcheck \
   lua-language-server taplo-cli vscode-json-languageserver   # other languages
+sudo pacman -S typescript-language-server tailwindcss-language-server prettier   # Next.js
+npm install -g --prefix ~/.local vscode-langservers-extracted   # ESLint server (no sudo)
 ./install.sh                  # links ~/.config/nvim, tmux.conf and asm-lsp config, installs plugins
 ```
 
@@ -71,7 +73,7 @@ Hard tabs, 8 wide, no line wrapping, kernel `cinoptions`, `.h` treated as C. `<S
 | Linker script (`.ld` `.lds`) | tabs, 8 | — | `lang/ld.lua`, `ftplugin/ld.lua` |
 | Shell (sh, bash, zsh) | 4 spaces | bash-language-server + shellcheck | `lang/sh.lua`, `ftplugin/sh.lua` |
 | Lua | 2 spaces (4 in `hypr/`) | lua-language-server + lazydev | `lang/lua.lua`, `ftplugin/lua.lua` |
-| JavaScript | 2 spaces | — | `lang/javascript.lua`, `ftplugin/javascript.lua` |
+| TypeScript / TSX / JS (Next.js) | 2 spaces, tree-sitter indent | ts_ls, tailwindcss, eslint, prettier (`<Space>cf`) | `lang/typescript.lua`, `ftplugin/typescript.lua`, `indent/typescript.lua` |
 | JSON, TOML, CSS/QSS, GLSL | 4 spaces | jsonls, taplo | `lang/data.lua` |
 
 Servers turn on by themselves once their binary is installed. Spacing files call `require("vimesimal.spacing").set({ width = 4 })` (add `tabs = true` for hard tabs). For Quickshell types in QML, keep an empty `.qmlls.ini` in the shell folder; Quickshell fills in the import paths.

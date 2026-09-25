@@ -1,2 +1,2 @@
--- JavaScript spacing: 2 spaces.
-require("vimesimal.spacing").set({ width = 2 })
+-- JavaScript: same as typescript (2 spaces, tree-sitter indent).
+vim.cmd.runtime("after/ftplugin/typescript.lua")
