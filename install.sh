@@ -31,8 +31,15 @@ if ! command -v nvim >/dev/null; then
 fi
 
 nvim --headless "+Lazy! sync" +qa
+
+# Build tree-sitter parsers now instead of on first launch
+if command -v tree-sitter >/dev/null; then
+	nvim --headless "+VimesimalTSInstall" +qa
+fi
 echo "plugins installed"
 
-for tool in clangd clang-format rg fzf git curl tmux nasm asm-lsp; do
+for tool in clangd clang-format rg fzf git curl tmux nasm asm-lsp tree-sitter \
+	qmlls6 pyright ruff bash-language-server shellcheck lua-language-server taplo \
+	vscode-json-language-server; do
 	command -v "$tool" >/dev/null || echo "missing: $tool"
 done

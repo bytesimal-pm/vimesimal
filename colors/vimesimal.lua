@@ -129,6 +129,7 @@ local groups = {
   ["@type"] = { link = "Type" },
   ["@type.builtin"] = { fg = p.type },
   ["@type.definition"] = { fg = p.type },
+  ["@constructor"] = { fg = p.type }, -- QML components (Rectangle {), Python classes
   ["@attribute"] = { fg = p.special },
   ["@function"] = { link = "Function" },
   ["@function.call"] = { fg = p.func },

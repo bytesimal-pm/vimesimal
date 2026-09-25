@@ -23,6 +23,8 @@ after/ftplugin/<name>.lua   language spacing / indent style
 ```sh
 sudo pacman -S neovim clang   # clang provides clangd + clang-format
 sudo pacman -S nasm rust && cargo install asm-lsp   # NASM + assembly completion
+sudo pacman -S tree-sitter-cli pyright ruff bash-language-server shellcheck \
+  lua-language-server taplo-cli vscode-json-languageserver   # other languages
 ./install.sh                  # links ~/.config/nvim, tmux.conf and asm-lsp config, installs plugins
 ```
 
@@ -30,7 +32,7 @@ sudo pacman -S nasm rust && cargo install asm-lsp   # NASM + assembly completion
 
 | | |
 |---|---|
-| Syntax highlight | built-in tree-sitter + `colors/vimesimal.lua`, LSP semantic tokens |
+| Syntax highlight | tree-sitter (nvim-treesitter builds parsers) + `colors/vimesimal.lua`, LSP semantic tokens |
 | Auto suggest | blink.cmp (LSP, paths, snippets, buffer words), signature help |
 | Nest | indent-blankline (current scope highlighted) |
 | Line | line numbers, cursorline, lualine, gitsigns |
@@ -57,6 +59,23 @@ sudo pacman -S nasm rust && cargo install asm-lsp   # NASM + assembly completion
 
 Hard tabs, 8 wide, no line wrapping, kernel `cinoptions`, `.h` treated as C. `<Space>cf` runs clang-format with a Linux kernel profile, unless the project has its own `.clang-format`.
 
+## Languages
+
+| Language | Spacing | Server / lint | Files |
+|---|---|---|---|
+| C | tabs, 8 | clangd, clang-format (kernel) | `lang/c.lua`, `ftplugin/c.lua` |
+| NASM | 8 spaces | asm-lsp | `lang/nasm.lua`, `ftplugin/nasm.lua` |
+| QML | 4 spaces | qmlls6 | `lang/qml.lua`, `ftplugin/qml.lua` |
+| Python | 4 spaces | pyright + ruff | `lang/python.lua`, `ftplugin/python.lua` |
+| Makefile | tabs, 8 | — | `lang/make.lua`, `ftplugin/make.lua` |
+| Linker script (`.ld` `.lds`) | tabs, 8 | — | `lang/ld.lua`, `ftplugin/ld.lua` |
+| Shell (sh, bash, zsh) | 4 spaces | bash-language-server + shellcheck | `lang/sh.lua`, `ftplugin/sh.lua` |
+| Lua | 2 spaces (4 in `hypr/`) | lua-language-server + lazydev | `lang/lua.lua`, `ftplugin/lua.lua` |
+| JavaScript | 2 spaces | — | `lang/javascript.lua`, `ftplugin/javascript.lua` |
+| JSON, TOML, CSS/QSS, GLSL | 4 spaces | jsonls, taplo | `lang/data.lua` |
+
+Servers turn on by themselves once their binary is installed. Spacing files call `require("vimesimal.spacing").set({ width = 4 })` (add `tabs = true` for hard tabs). For Quickshell types in QML, keep an empty `.qmlls.ini` in the shell folder; Quickshell fills in the import paths.
+
 ## NASM: 8 spaces
 
 `.asm`, `.nasm` and `.inc` open as NASM (x86/x86-64). Indent is 8 spaces (no tabs), with no line wrapping. `gcc` comments with `;`. Registers are violet and labels cyan; instructions use the keyword color. Once `asm-lsp` is installed (`~/.cargo/bin` on PATH), it adds instruction/register completion, hover docs (`K`) and nasm diagnostics automatically.
@@ -70,8 +89,8 @@ Hard tabs, 8 wide, no line wrapping, kernel `cinoptions`, `.h` treated as C. `<S
      { "stevearc/conform.nvim", opts = { formatters_by_ft = { python = { "ruff_format" } } } },
    }
    ```
-2. `after/ftplugin/<name>.lua`: `vim.bo.shiftwidth = …`
-3. Tree-sitter parser: `sudo pacman -S tree-sitter-<name>` (C and Lua come with Neovim)
+2. `after/ftplugin/<name>.lua`: `require("vimesimal.spacing").set({ width = 4 })`
+3. Tree-sitter parser: in the lang file, `{ "nvim-treesitter/nvim-treesitter", opts = function(_, o) vim.list_extend(o.parsers, { "<name>" }) end }`
 
 You don't need to edit anything under `lua/config/` or `lua/plugins/`.
 
