@@ -111,7 +111,7 @@ Claude Code runs in a split on the right (claudecode.nvim, Claude's IDE protocol
 | `<Space>am` | pick a model for this session |
 | `Ctrl-h` / `Ctrl-l` | leave the Claude terminal like any split (`Esc` stays with Claude) |
 
-`:ClaudeConfig` opens a menu for model, permission mode (`manual` review first, `acceptEdits`, `auto`, `plan`) and window side/width. Settings are saved to `~/.local/share/nvim/vimesimal-claude.json` and apply to the next session.
+`:ClaudeConfig` opens a menu for model, permission mode (`manual` review first, `acceptEdits`, `auto`, `plan`), compile/run checks (off by default: Claude relies on the editor's diagnostics instead of compiling to check its work) and window side/width. Settings are saved to `~/.local/share/nvim/vimesimal-claude.json` and apply to the next session.
 
 ## tmux
 

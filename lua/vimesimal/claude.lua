@@ -10,7 +10,14 @@ local M = {}
 
 local path = vim.fn.stdpath("data") .. "/vimesimal-claude.json"
 -- permission_mode "manual": Claude proposes each edit and waits (reviewed in the code window)
-local defaults = { model = "default", permission_mode = "manual", side = "right", width = 0.40 }
+-- build_checks false: tell Claude not to compile/run code to check its work
+local defaults = {
+  model = "default", permission_mode = "manual", side = "right", width = 0.40, build_checks = false,
+}
+
+local no_build_checks = "Don't compile, build, run or test code just to check your own work unless "
+  .. "the user asks for it. Rely on the editor's diagnostics (getDiagnostics / language server "
+  .. "errors) to catch mistakes instead."
 
 -- Settings ---------------------------------------------------------------------
 
@@ -34,6 +41,9 @@ function M.cmd(s)
   local cmd = "claude"
   if s.model ~= "default" then cmd = cmd .. " --model " .. s.model end
   cmd = cmd .. " --permission-mode " .. s.permission_mode
+  if not s.build_checks then
+    cmd = cmd .. " --append-system-prompt " .. vim.fn.shellescape(no_build_checks)
+  end
   return cmd
 end
 
@@ -737,11 +747,17 @@ local choices = {
       auto = "auto: Claude decides; edits reviewed afterwards (y keep / n undo)",
       plan = "plan: Claude only plans, no edits",
     } },
+  { key = "build_checks", name = "Compile/run checks", values = { false, true },
+    describe = {
+      [false] = "off: Claude doesn't compile or run code to check itself (uses diagnostics)",
+      [true] = "on: Claude may compile/run code to check its work (asks first in manual mode)",
+    } },
   { key = "side", name = "Window side", values = { "right", "left" } },
   { key = "width", name = "Window width", values = { 0.30, 0.40, 0.50 } },
 }
 
 local function show(v)
+  if type(v) == "boolean" then return v and "on" or "off" end
   return type(v) == "number" and (math.floor(v * 100 + 0.5) .. "%") or tostring(v)
 end
 
@@ -751,7 +767,10 @@ function M.config()
   vim.ui.select(items, { prompt = "Claude settings" }, function(_, idx)
     if not idx then return end
     local c = choices[idx]
-    local fmt = function(v) return c.describe and c.describe[v] or show(v) end
+    local fmt = function(v)
+      if c.describe and c.describe[v] ~= nil then return c.describe[v] end
+      return show(v)
+    end
     vim.ui.select(c.values, { prompt = c.name, format_item = fmt }, function(value)
       if value == nil then return end
       s[c.key] = value
